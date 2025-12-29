@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(source:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.lelapa.ai)",
+      "Bash(export:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl:*)",
+      "Read(/private/var/folders/d8/v9wy1wq15870hknx57q6y2xc0000gn/T/**)",
+      "Read(/private/var/folders/**)",
+      "Bash(cp:*)",
+      "Bash(unset:*)",
+      "Bash(env)",
+      "Bash(cat:*)",
+      "Bash(echo \"Created secure backup: $BACKUP_DIR\")",
+      "Bash(chmod:*)",
+      "Bash(echo \"Created clean final backup: $BACKUP_DIR\")",
+      "Bash(tree:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
