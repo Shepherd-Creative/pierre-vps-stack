@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chonkie Text Chunker</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+        textarea { width: 100%; height: 200px; margin-bottom: 10px; }
+        button { background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #005a87; }
+        .chunk { margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 4px; background: #f9f9f9; }
+        .chunk-header { font-weight: bold; margin-bottom: 5px; }
+        select, input[type="range"] { width: 100%; margin: 5px 0; }
+        label { display: block; margin: 10px 0 5px; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Chonkie Text Chunker</h1>
+    <p>Test different text chunking strategies powered by Chonkie.</p>
+    
+    <div class="container">
+        <div class="section">
+            <h2>Input & Configuration</h2>
+            <label for="text">Text to chunk:</label>
+            <textarea id="text" placeholder="Enter your text here...">This is a sample document for testing text chunking. It contains multiple sentences across several paragraphs. The Chonkie library will split this text into manageable chunks based on the selected strategy. Each chunk will maintain semantic coherence while respecting the specified size limits.</textarea>
+            
+            <label for="chunkerType">Chunker Type:</label>
+            <select id="chunkerType">
+                <option value="TokenChunker">Token Chunker</option>
+                <option value="SentenceChunker" selected>Sentence Chunker</option>
+                <option value="RecursiveChunker">Recursive Chunker</option>
+                <option value="SemanticChunker">Semantic Chunker (Requires Embeddings)</option>
+                <option value="CodeChunker">Code Chunker</option>
+                <option value="NeuralChunker">Neural Chunker (AI-powered)</option>
+            </select>
+            
+            <label for="chunkSize">Chunk Size: <span id="chunkSizeValue">100</span></label>
+            <input type="range" id="chunkSize" min="10" max="500" value="100" step="10">
+            
+            <label for="chunkOverlap">Chunk Overlap: <span id="chunkOverlapValue">20</span></label>
+            <input type="range" id="chunkOverlap" min="0" max="100" value="20" step="5">
+            
+            <button onclick="chunkText()">📊 Chunk Text</button>
+        </div>
+        
+        <div class="section">
+            <h2>Results</h2>
+            <div id="results">Click "Chunk Text" to see results...</div>
+        </div>
+    </div>
+
+    <script>
+        // Update range display values
+        document.getElementById('chunkSize').oninput = function() {
+            document.getElementById('chunkSizeValue').textContent = this.value;
+        };
+        document.getElementById('chunkOverlap').oninput = function() {
+            document.getElementById('chunkOverlapValue').textContent = this.value;
+        };
+
+        async function chunkText() {
+            const text = document.getElementById('text').value;
+            const config = {
+                chunkerType: document.getElementById('chunkerType').value,
+                chunkSize: parseInt(document.getElementById('chunkSize').value),
+                chunkOverlap: parseInt(document.getElementById('chunkOverlap').value),
+                tokenizerType: 'CharacterTokenizer',
+                embeddingProvider: 'sentence-transformers',
+                embeddingModel: 'all-MiniLM-L6-v2',
+                semanticThreshold: 0.3
+            };
+
+            if (!text.trim()) {
+                alert('Please enter some text to chunk');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>🔄 Processing...</p>';
+
+            try {
+                const response = await fetch('/api/chunk', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text, config })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                let html = `<h3>✅ ${data.total_chunks} chunks created in ${data.processing_time.toFixed(2)}ms</h3>`;
+                
+                data.chunks.forEach((chunk, index) => {
+                    const colors = ['#e3f2fd', '#f3e5f5', '#fff3e0', '#e8f5e8', '#fff8e1', '#fce4ec'];
+                    const color = colors[index % colors.length];
+                    
+                    html += `
+                        <div class="chunk" style="background-color: ${color};">
+                            <div class="chunk-header">Chunk ${index + 1} (${chunk.content.length} chars${chunk.token_count ? `, ${chunk.token_count} tokens` : ''})</div>
+                            <div>${chunk.content.replace(/\n/g, '<br>')}</div>
+                        </div>
+                    `;
+                });
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

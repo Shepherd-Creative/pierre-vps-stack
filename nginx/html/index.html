@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brandiron - Business Automation Solutions</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .services {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .service-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .service-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .service-card h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .service-card p {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        
+        .service-card .tech {
+            font-size: 0.9rem;
+            color: #999;
+            font-style: italic;
+        }
+        
+        .contact {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .contact h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        
+        .contact a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .contact a:hover {
+            text-decoration: underline;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 2rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Brandiron</h1>
+            <p>Intelligent Business Automation Solutions</p>
+        </header>
+        
+        <section class="services">
+            <div class="service-card">
+                <h3>🔄 Workflow Automation</h3>
+                <p>Streamline your business processes with intelligent automation workflows that connect your tools and data seamlessly.</p>
+                <div class="tech">Powered by n8n</div>
+            </div>
+            
+            <div class="service-card">
+                <h3>🧠 AI-Powered Insights</h3>
+                <p>Transform your data into actionable insights using advanced AI and machine learning capabilities.</p>
+                <div class="tech">Powered by LightRAG & Flowise</div>
+            </div>
+            
+            <div class="service-card">
+                <h3>📊 Data Integration</h3>
+                <p>Connect and synchronize data across all your business systems for a unified view of your operations.</p>
+                <div class="tech">Powered by Supabase</div>
+            </div>
+            
+            <div class="service-card">
+                <h3>🎯 Custom Solutions</h3>
+                <p>Tailored automation solutions designed specifically for your business needs and processes.</p>
+                <div class="tech">Bespoke Development</div>
+            </div>
+        </section>
+        
+        <section class="contact">
+            <h2>Ready to Automate Your Business?</h2>
+            <p>Get in touch to discuss how we can help streamline your operations.</p>
+            <p><a href="mailto:user@example.com">user@example.com</a></p>
+        </section>
+        
+        <footer class="footer">
+            <p>&copy; 2025 Brandiron. Empowering businesses through intelligent automation.</p>
+        </footer>
+    </div>
+</body>
+</html>

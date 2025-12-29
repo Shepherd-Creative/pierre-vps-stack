@@ -1,0 +1,550 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/html:/usr/share/nginx/html
+      - ./nginx/auth:/etc/nginx/auth
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    networks:
+      - docker-apps-network
+
+  n8n:
+    image: n8nio/n8n:1.121.3
+    container_name: n8n
+    restart: unless-stopped
+    user: "node"
+    env_file:
+      - .env
+    volumes:
+      - n8n-data:/home/node/.n8n
+    expose:
+      - 5678
+    deploy:
+      resources:
+        limits:
+          memory: 800M
+          cpus: '0.6'
+        reservations:
+          memory: 400M
+          cpus: '0.1'
+    networks:
+      - docker-apps-network
+
+  # REMOVED: flowise - not in use
+  # If you need it back, uncomment this section
+  # flowise:
+  #   image: flowiseai/flowise
+  #   container_name: flowise
+  #   restart: unless-stopped
+  #   volumes:
+  #     - flowise-data:/root/.flowise
+  #   expose:
+  #     - 3000
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 600M
+  #         cpus: '0.5'
+  #       reservations:
+  #         memory: 300M
+  #         cpus: '0.1'
+  #   networks:
+  #     - docker-apps-network
+
+  # Certbot - only runs manually for certificate renewal
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'certbot renew'"
+    profiles:
+      - certbot-renew  # Only runs with: docker compose --profile certbot-renew run certbot
+
+  # Neo4j Database for LightRAG and Graphiti
+  neo4j:
+    image: neo4j:5.15
+    container_name: neo4j
+    restart: unless-stopped
+    environment:
+      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:-CHANGE_ME_NEO4J_PASSWORD}
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_memory_heap_initial__size=512M
+      - NEO4J_dbms_memory_heap_max__size=1G
+      - NEO4J_dbms_connector_bolt_listen__address=0.0.0.0:7687
+      - NEO4J_dbms_connector_http_listen__address=0.0.0.0:7474
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+    expose:
+      - 7474
+      - 7687
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: '1.0'
+        reservations:
+          memory: 800M
+          cpus: '0.3'
+    healthcheck:
+      test: ["CMD", "neo4j", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - docker-apps-network
+
+  # LightRAG Service
+  lightrag:
+    image: ghcr.io/hkuds/lightrag:latest
+    container_name: lightrag
+    restart: unless-stopped
+    depends_on:
+      - neo4j
+    environment:
+      - TIKTOKEN_CACHE_DIR=/app/data/tiktoken
+    volumes:
+      - ./lightrag/data/rag_storage:/app/data/rag_storage
+      - ./lightrag/data/inputs:/app/data/inputs
+      - ./lightrag/data/tiktoken:/app/data/tiktoken
+      - ./lightrag/.env:/app/.env
+    expose:
+      - 9621
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.8'
+        reservations:
+          memory: 500M
+          cpus: '0.2'
+    networks:
+      - docker-apps-network
+
+  # ===========================================
+  # GRAPHITI - Knowledge Graph Memory System
+  # ===========================================
+  graphiti:
+    build:
+      context: ./graphiti
+      dockerfile: Dockerfile
+    container_name: graphiti
+    restart: unless-stopped
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-CHANGE_ME_NEO4J_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MODEL_NAME=${GRAPHITI_MODEL:-gpt-4.1-mini}
+      - GRAPHITI_GROUP_ID=${GRAPHITI_GROUP_ID:-my_portfolio}
+    volumes:
+      - graphiti-data:/app/data
+    expose:
+      - 8000
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+    networks:
+      - docker-apps-network
+
+  # Supabase Services
+  supabase-db:
+    image: supabase/postgres:15.8.1.060
+    container_name: supabase-db
+    healthcheck:
+      test: pg_isready -U postgres -h localhost
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: 5432
+      POSTGRES_PORT: 5432
+      PGPASSWORD: ${SUPABASE_DB_PASSWORD:-supabase_secure_db_password_2025}
+      POSTGRES_PASSWORD: ${SUPABASE_DB_PASSWORD:-supabase_secure_db_password_2025}
+      PGDATABASE: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      JWT_SECRET: ${SUPABASE_JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters-long}
+      JWT_EXP: 3600
+    volumes:
+      - supabase-db-data:/var/lib/postgresql/data:Z
+      - ./supabase/volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+      - -c
+      - log_min_messages=fatal
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.8'
+        reservations:
+          memory: 500M
+          cpus: '0.2'
+    networks:
+      - docker-apps-network
+
+  # Supabase Studio (Admin Dashboard)
+  supabase-studio:
+    image: supabase/studio:latest
+    container_name: supabase-studio
+    restart: unless-stopped
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      SUPABASE_URL: http://supabase-kong:8000
+      SUPABASE_REST_URL: http://supabase-kong:8000/rest/v1/
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+      STUDIO_PG_META_URL: http://supabase-meta:8080
+    expose:
+      - 3000
+    networks:
+      - docker-apps-network
+
+  # Supabase PostgREST (REST API)
+  supabase-rest:
+    image: postgrest/postgrest:v12.0.2
+    container_name: supabase-rest
+    restart: unless-stopped
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${SUPABASE_DB_PASSWORD:-supabase_secure_db_password_2025}@supabase-db:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${SUPABASE_JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters-long}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${SUPABASE_JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters-long}
+      PGRST_APP_SETTINGS_JWT_EXP: 3600
+    expose:
+      - 3000
+    networks:
+      - docker-apps-network
+
+  # Supabase GoTrue (Auth)
+  supabase-auth:
+    image: supabase/gotrue:v2.143.0
+    container_name: supabase-auth
+    restart: unless-stopped
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${SUPABASE_EXTERNAL_URL:-https://supabase.brandiron.co.za}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${SUPABASE_DB_PASSWORD:-supabase_secure_db_password_2025}@supabase-db:5432/postgres
+      GOTRUE_SITE_URL: ${SUPABASE_EXTERNAL_URL:-https://supabase.brandiron.co.za}
+      GOTRUE_URI_ALLOW_LIST: "*"
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters-long}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_EMAIL:-user@example.com}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-587}
+      GOTRUE_SMTP_USER: ${SMTP_USER:-user@example.com}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS:-your-app-password-here}
+      GOTRUE_SMTP_SENDER_NAME: Supabase
+    expose:
+      - 9999
+    networks:
+      - docker-apps-network
+
+  # Supabase Realtime
+  supabase-realtime:
+    image: supabase/realtime:v2.25.50
+    container_name: supabase-realtime
+    restart: unless-stopped
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      DB_HOST: supabase-db
+      DB_PORT: 5432
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${SUPABASE_DB_PASSWORD:-supabase_secure_db_password_2025}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: supabaserealtimedevenckey
+      API_JWT_SECRET: ${SUPABASE_JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters-long}
+      FLY_ALLOC_ID: fly123
+      FLY_APP_NAME: realtime
+      SECRET_KEY_BASE: ${REALTIME_SECRET_KEY:-REDACTED_REALTIME_KEY}
+    expose:
+      - 4000
+    networks:
+      - docker-apps-network
+
+  # Supabase pg_meta (Database metadata)
+  supabase-meta:
+    image: supabase/postgres-meta:v0.80.0
+    container_name: supabase-meta
+    restart: unless-stopped
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: supabase-db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${SUPABASE_DB_PASSWORD:-supabase_secure_db_password_2025}
+    expose:
+      - 8080
+    networks:
+      - docker-apps-network
+
+  supabase-kong:
+    image: kong:2.8.1
+    container_name: supabase-kong
+    restart: unless-stopped
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+    volumes:
+      - ./supabase/volumes/api/kong.yml:/kong.yml:ro
+    expose:
+      - 8000
+    networks:
+      - docker-apps-network
+
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__WEB_UI__ENABLED: true
+      QDRANT__LOG_LEVEL: INFO
+    volumes:
+      - qdrant-data:/qdrant/storage
+    expose:
+      - 6333
+      - 6334
+    networks:
+      - docker-apps-network
+
+  # Chonkie Backend API
+  chonkie:
+    build: ./chonkie
+    container_name: chonkie
+    restart: unless-stopped
+    environment:
+      - DEFAULT_SENTENCE_TRANSFORMER_MODEL=all-MiniLM-L6-v2
+      - ENABLE_LOCAL_EMBEDDINGS=true
+      - DEFAULT_EMBEDDING_PROVIDER=sentence-transformers
+      - SEMANTIC_THRESHOLD=0.3
+    env_file:
+      - ./chonkie/.env.local
+    volumes:
+      - chonkie-data:/home/chonkie/data
+    expose:
+      - 8000
+    networks:
+      - docker-apps-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  # Chonkie Visualizer Frontend
+  chonkie-visualizer:
+    image: node:20-alpine
+    container_name: chonkie-visualizer
+    restart: unless-stopped
+    depends_on:
+      - chonkie
+    working_dir: /app
+    volumes:
+      - ./chonkie/chonkie-visualizer:/app
+    expose:
+      - 3001
+    command: sh -c "npm install && SKIP_ENV_VALIDATION=1 npm run build -- --no-lint && npm start"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    networks:
+      - docker-apps-network
+
+  # === MONITORING STACK ===
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.external-url=https://monitoring.brandiron.co.za/prometheus/'
+      - '--web.route-prefix=/prometheus/'
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
+    expose:
+      - 9090
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.2'
+        reservations:
+          memory: 128M
+          cpus: '0.05'
+    networks:
+      - docker-apps-network
+
+  grafana:
+    image: grafana/grafana:10.1.5
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-CHANGE_ME_GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_DOMAIN=monitoring.brandiron.co.za
+      - GF_SERVER_ROOT_URL=https://monitoring.brandiron.co.za/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    expose:
+      - 3000
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.2'
+        reservations:
+          memory: 128M
+          cpus: '0.05'
+    networks:
+      - docker-apps-network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /cgroup:/cgroup:ro
+    expose:
+      - 8080
+    networks:
+      - docker-apps-network
+
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    container_name: node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    expose:
+      - 9100
+    networks:
+      - docker-apps-network
+
+  # Reading Fluency App
+  reading-fluency:
+    build:
+      context: ./reading-fluency
+      dockerfile: Dockerfile
+    container_name: reading-fluency
+    restart: unless-stopped
+    env_file:
+      - ./reading-fluency/.env
+    expose:
+      - 8000
+    volumes:
+      - reading-fluency-logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 600M
+          cpus: '0.1'
+    networks:
+      - docker-apps-network
+
+volumes:
+  n8n-data:
+  neo4j-data:
+  neo4j-logs:
+  supabase-db-data:
+  qdrant-data:
+  chonkie-data:
+  prometheus-data:
+  grafana-data:
+  reading-fluency-logs:
+  graphiti-data:
+
+networks:
+  docker-apps-network:
+    driver: bridge
