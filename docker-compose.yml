@@ -78,6 +78,8 @@ services:
       - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:-CHANGE_ME_NEO4J_PASSWORD}
       - NEO4J_PLUGINS=["apoc"]
       - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
       - NEO4J_dbms_memory_heap_initial__size=512M
       - NEO4J_dbms_memory_heap_max__size=1G
       - NEO4J_dbms_connector_bolt_listen__address=0.0.0.0:7687
