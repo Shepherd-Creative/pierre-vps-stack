@@ -513,6 +513,30 @@ services:
     networks:
       - docker-apps-network
 
+  # ===========================================
+  # PIERRE PORTFOLIO WEBSITE
+  # ===========================================
+  personal-website:
+    build:
+      context: ./personal-website
+      dockerfile: Dockerfile
+    container_name: personal-website
+    restart: unless-stopped
+    env_file:
+      - ./personal-website/.env
+    expose:
+      - 80
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.2'
+        reservations:
+          memory: 64M
+          cpus: '0.05'
+    networks:
+      - docker-apps-network
+
   # Reading Fluency App
   reading-fluency:
     build:
