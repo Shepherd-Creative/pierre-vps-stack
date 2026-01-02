@@ -58,6 +58,10 @@ git pull
 # 2. Install any new dependencies
 npm install
 
+# 2.5. Clean up package-lock.json changes from npm install
+# (npm install modifies package-lock.json, which creates "modified content" in the submodule)
+git restore package-lock.json
+
 # 3. Test locally (optional but recommended)
 npm run dev
 
