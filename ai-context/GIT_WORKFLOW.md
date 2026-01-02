@@ -10,6 +10,7 @@
 
 ```bash
 cd ~/Documents/pierre-vps-dev/personal-website
+git restore package-lock.json 2>/dev/null  # Handle conflicts
 git pull
 npm install  # only if dependencies changed
 npm run dev  # to test locally
@@ -28,6 +29,7 @@ git push
 
 ```bash
 cd ~/Documents/pierre-vps-dev
+git fetch origin && [ "$(git rev-list HEAD..origin/main --count)" -gt 0 ] && git pull --rebase
 git add personal-website
 git commit -m "Update website submodule: [brief description]"
 git push
@@ -40,21 +42,48 @@ git push
 ### Workflow A: User edited in Lovable, wants to sync locally
 
 ```bash
-# 1. Pull Lovable's changes
+# 0. Pre-Flight: Handle common conflicts
 cd ~/Documents/pierre-vps-dev/personal-website
+
+# Check for package-lock.json changes (common conflict source)
+git status | grep -q package-lock.json && git restore package-lock.json || echo "No package-lock conflicts"
+
+# 1. Pull Lovable's changes
 git pull
+
+# If pull fails with conflicts:
+# - Review: git status
+# - Resolve conflicts manually, then: git add . && git commit && git pull
 
 # 2. Install any new dependencies
 npm install
 
-# 3. Test locally
+# 3. Test locally (optional but recommended)
 npm run dev
 
 # 4. Update parent repo to track new submodule commit
 cd ~/Documents/pierre-vps-dev
+
+# Pre-check: See if remote has changes we don't have
+git fetch origin
+BEHIND=$(git rev-list HEAD..origin/main --count)
+
+# If behind remote, pull first to avoid push rejection
+if [ "$BEHIND" -gt 0 ]; then
+    echo "Remote has $BEHIND commits we don't have, pulling first..."
+    git pull --rebase || {
+        echo "❌ Rebase failed. Resolve conflicts, then continue with: git rebase --continue"
+        exit 1
+    }
+fi
+
+# Now update submodule pointer and push
 git add personal-website
 git commit -m "Update website submodule: sync from Lovable"
 git push
+
+# If push still fails with "rejected", run:
+# git pull --rebase && git push
 ```
 
 ### Workflow B: User edited locally, wants to push to Lovable
@@ -79,16 +108,83 @@ git push
 # 1. SSH to VPS
 ssh pierre_sudo_user@46.202.128.120
 
-# 2. Pull updates (from ~/docker-apps directory)
+# 2. Pre-Flight: Check git health
 cd ~/docker-apps
-git pull origin main
+git status > /dev/null 2>&1 || {
+    echo "❌ Git repository unhealthy! Use Workflow D for recovery."
+    exit 1
+}
 
-# 3. Update submodule
+# Check for uncommitted changes
+if ! git diff-index --quiet HEAD --; then
+    echo "⚠️ Warning: Uncommitted changes detected"
+    git status
+    echo "Commit or stash changes before continuing"
+    exit 1
+fi
+
+# 3. Pull updates
+git pull origin main || {
+    echo "❌ Pull failed. Check for merge conflicts or use Workflow D"
+    exit 1
+}
+
+# 4. Update submodule
 git submodule update --init --recursive
 
-# 4. Rebuild and restart website container
+# 5. Verify .env files exist
+[ -f .env ] || { echo "❌ Main .env missing!"; exit 1; }
+[ -f personal-website/.env ] || { echo "❌ Website .env missing!"; exit 1; }
+
+# 6. Rebuild and restart website container
 docker compose up -d --build personal-website
 docker compose restart nginx
+
+# 7. Wait for startup
+sleep 10
+
+# 8. Post-Deployment Verification
+echo ""
+echo "=== Verifying Deployment ==="
+
+# Check nginx status
+if docker ps | grep nginx | grep -q "Up"; then
+    echo "✅ Nginx running"
+else
+    echo "❌ Nginx not running"
+    docker logs nginx --tail 20
+    exit 1
+fi
+
+# Check personal-website status
+if docker ps | grep personal-website | grep -q "Up"; then
+    echo "✅ Personal website container running"
+else
+    echo "❌ Personal website container not running"
+    docker logs personal-website --tail 20
+    exit 1
+fi
+
+# Test HTTPS
+if curl -s -o /dev/null -w "%{http_code}" https://pierre.brandiron.co.za | grep -q "200"; then
+    echo "✅ Website accessible via HTTPS"
+else
+    echo "❌ Website not accessible"
+    curl -I https://pierre.brandiron.co.za
+    exit 1
+fi
+
+# Check for errors in logs
+echo ""
+echo "=== Recent Container Logs ==="
+echo "--- Nginx ---"
+docker logs nginx --tail 5
+echo "--- Personal Website ---"
+docker logs personal-website --tail 5
+
+echo ""
+echo "✅ Deployment successful!"
+echo "Visit: https://pierre.brandiron.co.za"
 ```
 
 ---
@@ -376,6 +472,81 @@ docker compose up -d --build personal-website --force-recreate
 
 ---
 
+## 🚀 Workflow E: Complete Deployment (Lovable → Local → GitHub → VPS)
+
+**Use this when you want to deploy Lovable changes all the way to production in one go.**
+
+This combines Workflow A and Workflow C with proper conflict handling and verification.
+
+### Quick Command Sequence
+
+```bash
+# ============================================
+# PART 1: LOCAL MACHINE (Mac)
+# ============================================
+
+# Navigate and handle conflicts
+cd ~/Documents/pierre-vps-dev/personal-website
+git restore package-lock.json 2>/dev/null
+git pull
+npm install
+
+# Update parent repo
+cd ~/Documents/pierre-vps-dev
+git fetch origin
+[ "$(git rev-list HEAD..origin/main --count)" -gt 0 ] && git pull --rebase
+git add personal-website
+git commit -m "Deploy: $(date +'%Y-%m-%d %H:%M')"
+git push
+
+# ============================================
+# PART 2: VPS (via SSH)
+# ============================================
+
+ssh pierre_sudo_user@46.202.128.120 << 'ENDSSH'
+cd ~/docker-apps
+
+# Health check and deploy
+git status > /dev/null 2>&1 || { echo "❌ Git unhealthy, use Workflow D"; exit 1; }
+git pull origin main
+git submodule update --init --recursive
+[ -f .env ] && [ -f personal-website/.env ] || { echo "❌ .env missing"; exit 1; }
+
+# Rebuild and verify
+docker compose up -d --build personal-website
+docker compose restart nginx
+sleep 10
+
+# Quick verification
+docker ps | grep -E "nginx|personal-website" | grep -q "Up" && \
+curl -s -o /dev/null -w "%{http_code}" https://pierre.brandiron.co.za | grep -q "200" && \
+echo "✅ Deployment successful! Visit: https://pierre.brandiron.co.za" || \
+echo "❌ Deployment failed, check logs"
+ENDSSH
+```
+
+### When to Use Workflow E
+
+- ✅ You made changes in Lovable and want them live on production
+- ✅ You want a single command to deploy everything  
+- ✅ You want automated verification after deployment
+- ⚠️ First time deploying? Test Workflow A and C separately first
+
+### Troubleshooting
+
+If any step fails, refer to the appropriate workflow:
+
+| Issue | Use Workflow |
+|-------|--------------|
+| Package-lock.json conflicts | Automatic in Workflow E |
+| Git pull fails with conflicts | Workflow A troubleshooting |
+| Push rejected | Automatic in Workflow E |
+| VPS git unhealthy | Workflow D |
+| Nginx crashes | Service Decommissioning section |
+| Website not accessible | Check logs and verify .env files |
+
+---
+
 ## ⚠️ IMPORTANT: New Subdomain Deployment Checklist
 
 When deploying a **new subdomain** (first time only), additional steps are required:
@@ -616,6 +787,7 @@ When user says any of these, use the appropriate workflow:
 | "sync from Lovable" / "pull Lovable changes" | Workflow A |
 | "push my changes" / "sync to Lovable" | Workflow B |
 | "deploy to VPS" / "push to production" | Workflow C |
+| "deploy Lovable to production" / "complete deployment" / "deploy everything" | Workflow E (Complete) |
 | "VPS git is broken" / "merge conflicts on VPS" / "fresh clone VPS" | Workflow D (Recovery) |
 | "commit website changes" | Workflow B (steps 1 only) |
 | "update the submodule" / "update parent repo" | Parent repo update only |
@@ -674,5 +846,10 @@ When user says any of these, use the appropriate workflow:
 
 ---
 
-*Last Updated: January 2, 2026*
-*Latest Incident: VPS git corruption recovery - added Workflow D and Service Decommissioning Checklist*
+*Last Updated: January 2, 2026*  
+*Latest Updates:*
+- *Added Workflow E: Complete end-to-end deployment (Lovable → VPS)*
+- *Enhanced Workflow A: Conflict handling and push rejection prevention*
+- *Enhanced Workflow C: Pre-flight checks and post-deployment verification*
+- *Workflow D: VPS git corruption recovery with SSL certificate restoration*
+- *Service Decommissioning Checklist to prevent nginx crashes*
