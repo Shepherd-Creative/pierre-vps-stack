@@ -93,6 +93,289 @@ docker compose restart nginx
 
 ---
 
+## 🆘 Workflow D: VPS Git Repository Corruption Recovery
+
+**Use this if `git pull` fails with merge conflicts or "not a git repository" errors on VPS.**
+
+This happened on Jan 2, 2025 when the VPS `~/docker-apps` directory was never properly initialized from GitHub, causing merge conflicts and missing SSL certificates after attempting fresh clone.
+
+### Quick Diagnosis
+
+```bash
+# On VPS - check if git repo is healthy
+cd ~/docker-apps
+git status
+
+# Common signs of corruption:
+# - "Not a git repository"
+# - "No commits yet" on branch master
+# - Merge conflicts on every pull
+# - Changes staged but never committed
+```
+
+### Recovery Steps
+
+#### Step 1: Backup Critical VPS-Specific Files
+
+```bash
+# On VPS - create timestamped backup
+cd ~
+mkdir -p vps-recovery-backup-$(date +%Y%m%d-%H%M)
+
+# Back up environment variables (NOT in git)
+cp docker-apps/.env vps-recovery-backup-*/main.env 2>/dev/null
+cp docker-apps/personal-website/.env vps-recovery-backup-*/website.env 2>/dev/null
+cp -r docker-apps/lightrag/.env vps-recovery-backup-*/lightrag.env 2>/dev/null
+
+# Back up SSL certificates (NOT in git) - CRITICAL!
+sudo cp -r docker-apps/certbot/conf vps-recovery-backup-*/certbot-conf
+
+# Back up any working nginx configs that differ from GitHub
+cp -r docker-apps/nginx/conf.d vps-recovery-backup-*/nginx-conf.d
+
+# Verify backup
+ls -lah vps-recovery-backup-*/
+```
+
+**⚠️ CRITICAL:** SSL certificates are NOT in git. If you skip backing them up, you'll need to regenerate ALL certificates (20+ minutes, risk of rate limits).
+
+#### Step 2: Rename Broken Directory
+
+```bash
+# On VPS
+cd ~
+mv docker-apps docker-apps-broken-$(date +%Y%m%d-%H%M)
+```
+
+#### Step 3: Fresh Clone from GitHub
+
+```bash
+# On VPS
+cd ~
+git clone https://github.com/Shepherd-Creative/pierre-vps-stack.git docker-apps
+cd docker-apps
+
+# Verify clone
+git remote -v
+git status  # Should be clean
+git log --oneline -3
+```
+
+#### Step 4: Initialize Submodule
+
+```bash
+# On VPS
+cd ~/docker-apps
+git submodule update --init --recursive
+
+# Verify submodule
+ls -la personal-website/
+cd personal-website && git status && cd ..
+```
+
+#### Step 5: Restore Environment Variables
+
+```bash
+# On VPS
+cd ~/docker-apps
+
+# Restore main .env
+cp ~/vps-recovery-backup-*/main.env .env
+
+# Restore website .env
+cp ~/vps-recovery-backup-*/website.env personal-website/.env
+
+# Restore other service .env files
+cp ~/vps-recovery-backup-*/lightrag.env lightrag/.env 2>/dev/null
+
+# Verify restoration
+echo "=== Main .env ==="
+head -5 .env
+
+echo "=== Website .env ==="
+cat personal-website/.env
+```
+
+#### Step 6: Restore SSL Certificates (CRITICAL!)
+
+```bash
+# On VPS
+cd ~/docker-apps
+
+# Restore entire certbot configuration
+sudo cp -r ~/vps-recovery-backup-*/certbot-conf/* certbot/conf/
+
+# Verify certificates restored
+sudo ls -la certbot/conf/live/ 2>/dev/null || echo "⚠️ Certificates not restored!"
+
+# Should see directories like:
+# - pierre.brandiron.co.za/
+# - n8n.brandiron.co.za/
+# - qdrant.brandiron.co.za/
+# etc.
+```
+
+**Why this matters:** Without SSL certificates, nginx will crash on startup with certificate file not found errors.
+
+#### Step 7: Check for Nginx Config Differences
+
+```bash
+# On VPS
+cd ~/docker-apps
+
+# Compare backup configs with GitHub version
+diff -r ~/vps-recovery-backup-*/nginx-conf.d/ nginx/conf.d/ | grep "^Only in"
+
+# Common differences:
+# - HTTPS enabled/disabled (VPS should have HTTPS enabled)
+# - Deleted services (flowise, supabase, etc.)
+```
+
+If you see differences:
+
+```bash
+# Copy production HTTPS configs if GitHub has HTTP-only versions
+cp ~/vps-recovery-backup-*/nginx-conf.d/pierre.brandiron.co.za.conf nginx/conf.d/
+
+# Remove configs for deleted services
+rm nginx/conf.d/flowise.brandiron.co.za.conf 2>/dev/null
+rm nginx/conf.d/supabase.brandiron.co.za.conf 2>/dev/null
+rm nginx/conf.d/brandiron.co.za.conf 2>/dev/null
+```
+
+#### Step 8: Commit Corrected Configs to GitHub
+
+```bash
+# On VPS
+cd ~/docker-apps
+
+# If you copied HTTPS-enabled configs from backup
+git add nginx/conf.d/
+git commit -m "Enable HTTPS for production configs (restored from VPS)"
+git push
+
+# If you removed obsolete configs
+git add nginx/conf.d/
+git commit -m "Remove obsolete nginx configs for deleted services"
+git push
+```
+
+#### Step 9: Restart All Services
+
+```bash
+# On VPS
+cd ~/docker-apps
+
+# Stop everything cleanly
+docker compose down
+
+# Start all services fresh
+docker compose up -d
+
+# Wait for startup
+sleep 15
+
+# Check status
+docker ps --format "table {{.Names}}\t{{.Status}}"
+```
+
+#### Step 10: Verify Everything Works
+
+```bash
+# On VPS
+
+# 1. Check nginx is running (not restarting)
+docker ps | grep nginx
+# Should show: Up X seconds (not "Restarting")
+
+# 2. Test website HTTPS
+curl -I https://pierre.brandiron.co.za
+# Should return: HTTP/1.1 200 OK
+
+# 3. Verify environment variables loaded
+docker exec personal-website env | grep VITE
+# Should show VITE_CHAT_WEBHOOK_URL, etc.
+
+# 4. Check git status
+git status
+# Should show: working tree clean
+
+# 5. Test other critical services
+curl -I https://n8n.brandiron.co.za
+curl -I https://qdrant.brandiron.co.za
+```
+
+#### Step 11: Cleanup (Only After Verification)
+
+```bash
+# On VPS - only after ALL checks pass
+
+# Remove broken directory
+sudo rm -rf ~/docker-apps-broken-*
+
+# Keep backup for 24-48 hours, then remove
+# sudo rm -rf ~/vps-recovery-backup-*
+```
+
+### Common Issues During Recovery
+
+#### Issue: Nginx keeps restarting
+
+```bash
+# Check logs
+docker logs nginx --tail 50
+
+# Common causes:
+# 1. Missing SSL certificates - restore from backup (Step 6)
+# 2. Configs reference deleted services - remove those configs
+# 3. Configs reference missing upstreams - remove or fix configs
+```
+
+#### Issue: "host not found in upstream"
+
+```bash
+# Nginx can't find a container referenced in a config
+# Solution: Remove the config for that deleted service
+rm nginx/conf.d/[deleted-service].brandiron.co.za.conf
+docker compose restart nginx
+```
+
+#### Issue: "cannot load certificate"
+
+```bash
+# SSL certificate missing
+# Solution: Restore from backup or regenerate
+sudo cp -r ~/vps-recovery-backup-*/certbot-conf/* certbot/conf/
+docker compose restart nginx
+```
+
+#### Issue: VITE variables undefined in website
+
+```bash
+# .env wasn't present during build
+# Solution: Restore .env and rebuild
+cp ~/vps-recovery-backup-*/website.env personal-website/.env
+docker compose up -d --build personal-website --force-recreate
+```
+
+### Prevention Tips
+
+1. **Never manually initialize git on VPS** - always clone from GitHub
+2. **Back up SSL certs before major changes** - they're not in git
+3. **Keep nginx configs synced to GitHub** - especially HTTPS-enabled versions
+4. **Remove configs when deleting services** - prevents nginx startup failures
+5. **Test after every git pull** - catch issues before they cascade
+
+### When to Use This Workflow
+
+- `git pull` consistently fails with merge conflicts
+- VPS shows "not a git repository" or "no commits yet"
+- Fresh VPS setup needed
+- Major infrastructure migration
+- After accidentally corrupted git directory
+
+---
+
 ## ⚠️ IMPORTANT: New Subdomain Deployment Checklist
 
 When deploying a **new subdomain** (first time only), additional steps are required:
@@ -146,6 +429,104 @@ git add nginx/conf.d/[subdomain].brandiron.co.za.conf
 git commit -m "Update nginx config: enable HTTPS for [subdomain]"
 git push
 ```
+
+---
+
+## 🗑️ Service Decommissioning Checklist
+
+**Use this when permanently removing a service from VPS to prevent nginx startup failures.**
+
+### Step 1: Stop and Remove Container
+
+```bash
+# On VPS
+cd ~/docker-apps
+docker compose stop [service-name]
+docker compose rm [service-name]
+
+# Verify removal
+docker ps -a | grep [service-name]
+```
+
+### Step 2: Remove Nginx Config
+
+```bash
+# On VPS
+cd ~/docker-apps
+
+# Remove the nginx config for this service
+rm nginx/conf.d/[service-name].brandiron.co.za.conf
+
+# Commit the removal to git
+git add nginx/conf.d/
+git commit -m "Remove nginx config for decommissioned [service-name] service"
+git push
+```
+
+**⚠️ CRITICAL:** If you skip this step, nginx will crash on next restart trying to find the deleted service!
+
+### Step 3: Restart Nginx
+
+```bash
+# On VPS
+docker compose restart nginx
+
+# Verify nginx started successfully
+docker ps | grep nginx
+# Should show: Up X seconds (not "Restarting")
+```
+
+### Step 4: Clean Up SSL Certificate (Optional)
+
+```bash
+# On VPS - optional, certs don't hurt to keep
+
+# List certificate to confirm it exists
+sudo ls -la certbot/conf/live/[service-name].brandiron.co.za/
+
+# Remove certificate (optional)
+# sudo rm -rf certbot/conf/live/[service-name].brandiron.co.za/
+# sudo rm -rf certbot/conf/archive/[service-name].brandiron.co.za/
+# sudo rm certbot/conf/renewal/[service-name].brandiron.co.za.conf
+```
+
+**Note:** Keeping old certificates doesn't hurt. They'll auto-renew until manually removed.
+
+### Step 5: Update Local Repository
+
+```bash
+# On local machine
+cd ~/Documents/pierre-vps-dev
+git pull origin main
+
+# Verify config removed locally
+ls nginx/conf.d/ | grep [service-name]
+# Should return nothing
+```
+
+### Example: Decommissioning Flowise
+
+```bash
+# 1. Stop container
+docker compose stop flowise
+docker compose rm flowise
+
+# 2. Remove nginx config
+rm nginx/conf.d/flowise.brandiron.co.za.conf
+git add nginx/conf.d/
+git commit -m "Remove nginx config for decommissioned flowise service"
+git push
+
+# 3. Restart nginx
+docker compose restart nginx
+docker ps | grep nginx  # Verify running
+```
+
+### Services Recently Decommissioned
+
+- ✅ flowise.brandiron.co.za (Jan 2, 2025)
+- ✅ supabase.brandiron.co.za (Jan 2, 2025)
+- ✅ brandiron.co.za main landing (Jan 2, 2025)
 
 ---
 
@@ -211,7 +592,7 @@ server {
 
 4. **`.env` files are local/VPS only**: Never committed. Created manually on each environment from `.env.example`.
 
-5. **SSL certs live on VPS only**: Certificates are not in git. They're stored at `/home/pierre_sudo_user/docker-apps/certbot/conf/`.
+5. **SSL certs live on VPS only**: Certificates are not in git. They're stored at `/home/pierre_sudo_user/docker-apps/certbot/conf/`. **ALWAYS back these up before major git operations!**
 
 6. **Nginx configs in git should be production-ready**: Once HTTPS is working, sync the config back to git so future pulls don't break SSL.
 
@@ -221,6 +602,8 @@ server {
    - **On VPS**: Ensure `personal-website/.env` exists BEFORE running `docker compose up --build`
    - **To verify**: `docker exec personal-website grep -o "n8n.brandiron" /usr/share/nginx/html/assets/*.js`
    - If variable is missing, recreate `.env` and rebuild: `docker compose up -d --build personal-website --force-recreate`
+
+8. **⚠️ CRITICAL: Always remove nginx configs when decommissioning services**: If a service is deleted but its nginx config remains, nginx will crash on startup trying to find the missing upstream container or SSL certificate.
 
 ---
 
@@ -233,9 +616,11 @@ When user says any of these, use the appropriate workflow:
 | "sync from Lovable" / "pull Lovable changes" | Workflow A |
 | "push my changes" / "sync to Lovable" | Workflow B |
 | "deploy to VPS" / "push to production" | Workflow C |
+| "VPS git is broken" / "merge conflicts on VPS" / "fresh clone VPS" | Workflow D (Recovery) |
 | "commit website changes" | Workflow B (steps 1 only) |
 | "update the submodule" / "update parent repo" | Parent repo update only |
 | "add new subdomain" / "deploy new service" | New Subdomain Checklist |
+| "remove service" / "delete [service]" / "decommission [service]" | Service Decommissioning Checklist |
 
 ---
 
@@ -255,10 +640,39 @@ When user says any of these, use the appropriate workflow:
 ├── personal-website/                 ← Submodule
 │   └── .env                          ← VPS secrets (created manually)
 ├── nginx/conf.d/                     ← Nginx configs
-├── certbot/conf/                     ← SSL certificates (VPS only)
+├── certbot/conf/                     ← SSL certificates (VPS only, NOT in git!)
 └── .env                              ← Main VPS secrets
 ```
 
 ---
 
-*Last Updated: December 2025*
+## Best Practices Summary
+
+### SSL Certificates (NOT in git)
+- ✅ Always back up before major git operations
+- ✅ Stored in `certbot/conf/` directory
+- ✅ Auto-renew via certbot cron job
+- ❌ Never commit to git (too large, security risk)
+
+### Nginx Configs (IN git)
+- ✅ Commit production HTTPS-enabled versions to git
+- ✅ Remove config when decommissioning service
+- ✅ Test locally before deploying to VPS
+- ❌ Don't leave configs referencing deleted services
+
+### Environment Variables (NOT in git)
+- ✅ Use `.env.example` as template in git
+- ✅ Create actual `.env` manually on each machine
+- ✅ Back up before major operations
+- ❌ Never commit actual `.env` files
+
+### Git Operations on VPS
+- ✅ Always pull from GitHub, never manually init
+- ✅ Verify `git status` is clean before major changes
+- ✅ Test after every `git pull` before restarting services
+- ❌ Don't manually create git repos on VPS
+
+---
+
+*Last Updated: January 2, 2026*
+*Latest Incident: VPS git corruption recovery - added Workflow D and Service Decommissioning Checklist*
