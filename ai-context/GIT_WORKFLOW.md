@@ -737,13 +737,18 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
+    # Docker DNS resolver - REQUIRED: allows nginx to start even if upstream container is down
+    resolver 127.0.0.11 valid=30s ipv6=off;
+
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header X-Content-Type-Options "nosniff" always;
 
     location / {
-        proxy_pass http://[container-name]:[port]/;
+        # Use variable for upstream - nginx resolves at request time, not startup
+        set $upstream_[service] [container-name]:[port];
+        proxy_pass http://$upstream_[service]/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -752,6 +757,8 @@ server {
     }
 }
 ```
+
+> **Why the resolver pattern?** Static `proxy_pass http://container:port` causes nginx to crash on startup if the container isn't running. The `resolver` + `set $upstream` pattern defers DNS resolution to request time, so nginx starts regardless of container state.
 
 ---
 
