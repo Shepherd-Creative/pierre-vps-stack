@@ -21,12 +21,13 @@ jobs:
       - name: Create dummy env files for validation
         run: |
           # Create ALL missing .env and .env.local files that docker-compose references
-          touch chonkie/.env.local 2>/dev/null || true
-          touch lightrag/.env.local 2>/dev/null || true
-          touch graphiti/.env.local 2>/dev/null || true
-          touch personal-website/.env 2>/dev/null || true
-          touch personal-website/.env.local 2>/dev/null || true
-          touch reading-fluency/.env 2>/dev/null || true
+          touch .env || true
+          touch chonkie/.env.local || true
+          touch lightrag/.env.local || true
+          touch graphiti/.env.local || true
+          touch personal-website/.env || true
+          touch personal-website/.env.local || true
+          touch reading-fluency/.env || true
       
       - name: Validate docker-compose.yml
         run: |
