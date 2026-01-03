@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
       
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -37,9 +39,10 @@ jobs:
             echo "📦 Deploying to VPS..."
             cd /home/pierre_sudo_user/docker-apps
             
-            # Pull latest changes
+            # Pull latest changes (including submodules)
             echo "🔄 Pulling latest code from GitHub..."
             git pull origin main
+            git submodule update --init --recursive
             
             # Rebuild and restart services
             echo "🏗️  Rebuilding and restarting Docker services..."
@@ -60,7 +63,7 @@ jobs:
       - name: Verify deployment
         run: |
           echo "🔍 Verifying services are running..."
-          ssh pierre_sudo_user@46.202.128.120 'docker compose ps --format "table {{.Service}}\t{{.Status}}"'
+          ssh pierre_sudo_user@46.202.128.120 'cd /home/pierre_sudo_user/docker-apps && docker compose ps --format "table {{.Service}}\t{{.Status}}"'
       
       - name: Deployment summary
         if: always()
