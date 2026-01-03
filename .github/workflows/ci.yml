@@ -15,6 +15,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Create dummy env files for validation
+        run: |
+          # Create missing .env.local files that docker-compose references
+          touch chonkie/.env.local 2>/dev/null || true
+          touch lightrag/.env.local 2>/dev/null || true
+          touch graphiti/.env.local 2>/dev/null || true
+          touch personal-website/.env.local 2>/dev/null || true
+      
       - name: Validate docker-compose.yml
         run: |
           docker compose config -q
@@ -57,10 +65,11 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout code with submodules
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          token: ${{ secrets.GH_PAT }}
       
       - name: Setup Node.js
         uses: actions/setup-node@v4

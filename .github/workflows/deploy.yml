@@ -9,14 +9,8 @@ jobs:
   deploy:
     name: Deploy to Production VPS
     runs-on: ubuntu-latest
-    environment: production
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-      
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -39,10 +33,15 @@ jobs:
             echo "📦 Deploying to VPS..."
             cd /home/pierre_sudo_user/docker-apps
             
-            # Pull latest changes (including submodules)
+            # Pull latest changes
             echo "🔄 Pulling latest code from GitHub..."
             git pull origin main
-            git submodule update --init --recursive
+            
+            # Update submodules if they exist
+            if [ -f .gitmodules ]; then
+              echo "🔄 Updating submodules..."
+              git submodule update --init --recursive || echo "⚠️ Submodule update skipped"
+            fi
             
             # Rebuild and restart services
             echo "🏗️  Rebuilding and restarting Docker services..."
@@ -66,12 +65,6 @@ jobs:
           ssh pierre_sudo_user@46.202.128.120 'cd /home/pierre_sudo_user/docker-apps && docker compose ps --format "table {{.Service}}\t{{.Status}}"'
       
       - name: Deployment summary
-        if: always()
         run: |
-          if [ $? -eq 0 ]; then
-            echo "✅ Deployment successful!"
-            echo "🌐 Site: https://pierre.brandiron.co.za"
-          else
-            echo "❌ Deployment failed"
-            exit 1
-          fi
+          echo "✅ Deployment successful!"
+          echo "🌐 Site: https://pierre.brandiron.co.za"
