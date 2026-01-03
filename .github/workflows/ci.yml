@@ -14,13 +14,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          token: ${{ secrets.GH_PAT }}
       
       - name: Create dummy env files for validation
         run: |
-          # Create missing .env and .env.local files that docker-compose references
+          # Create ALL missing .env and .env.local files that docker-compose references
           touch chonkie/.env.local 2>/dev/null || true
           touch lightrag/.env.local 2>/dev/null || true
           touch graphiti/.env.local 2>/dev/null || true
+          touch personal-website/.env 2>/dev/null || true
           touch personal-website/.env.local 2>/dev/null || true
           touch reading-fluency/.env 2>/dev/null || true
       
