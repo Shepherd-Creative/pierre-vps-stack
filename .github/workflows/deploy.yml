@@ -1,0 +1,74 @@
+name: CD - Deploy to VPS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allow manual triggers
+
+jobs:
+  deploy:
+    name: Deploy to Production VPS
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+      
+      - name: Add VPS to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 46.202.128.120 >> ~/.ssh/known_hosts
+      
+      - name: Test SSH connection
+        run: |
+          ssh -o StrictHostKeyChecking=no pierre_sudo_user@46.202.128.120 'echo "✅ SSH connection successful"'
+      
+      - name: Deploy to VPS
+        run: |
+          ssh pierre_sudo_user@46.202.128.120 << 'ENDSSH'
+            set -e
+            
+            echo "📦 Deploying to VPS..."
+            cd /home/pierre_sudo_user/docker-apps
+            
+            # Pull latest changes
+            echo "🔄 Pulling latest code from GitHub..."
+            git pull origin main
+            
+            # Rebuild and restart services
+            echo "🏗️  Rebuilding and restarting Docker services..."
+            docker compose up -d --build
+            
+            # Wait for services to stabilize
+            sleep 5
+            
+            # Show status
+            echo ""
+            echo "📊 Service Status:"
+            docker compose ps
+            
+            echo ""
+            echo "✅ Deployment complete!"
+          ENDSSH
+      
+      - name: Verify deployment
+        run: |
+          echo "🔍 Verifying services are running..."
+          ssh pierre_sudo_user@46.202.128.120 'docker compose ps --format "table {{.Service}}\t{{.Status}}"'
+      
+      - name: Deployment summary
+        if: always()
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "✅ Deployment successful!"
+            echo "🌐 Site: https://pierre.brandiron.co.za"
+          else
+            echo "❌ Deployment failed"
+            exit 1
+          fi
