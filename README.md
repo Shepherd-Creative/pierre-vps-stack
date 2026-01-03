@@ -1,6 +1,9 @@
 # Pierre VPS Docker Stack
 
-Personal VPS infrastructure for AI tools, RAG systems, and portfolio projects.
+[![CI - Testing & Linting](https://github.com/Shepherd-Creative/pierre-vps-stack/actions/workflows/ci.yml/badge.svg)](https://github.com/Shepherd-Creative/pierre-vps-stack/actions/workflows/ci.yml)
+[![CD - Deploy to VPS](https://github.com/Shepherd-Creative/pierre-vps-stack/actions/workflows/deploy.yml/badge.svg)](https://github.com/Shepherd-Creative/pierre-vps-stack/actions/workflows/deploy.yml)
+
+Personal VPS infrastructure for AI tools, RAG systems, and portfolio projects with automated CI/CD deployment.
 
 ## Architecture
 
