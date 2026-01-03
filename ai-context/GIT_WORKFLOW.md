@@ -748,7 +748,8 @@ server {
     location / {
         # Use variable for upstream - nginx resolves at request time, not startup
         set $upstream_[service] [container-name]:[port];
-        proxy_pass http://$upstream_[service]/;
+        # IMPORTANT: Use $request_uri, NOT trailing slash - variables don't auto-forward URI
+        proxy_pass http://$upstream_[service]$request_uri;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -759,6 +760,8 @@ server {
 ```
 
 > **Why the resolver pattern?** Static `proxy_pass http://container:port` causes nginx to crash on startup if the container isn't running. The `resolver` + `set $upstream` pattern defers DNS resolution to request time, so nginx starts regardless of container state.
+>
+> **Why `$request_uri` instead of trailing slash?** With static upstreams, `proxy_pass http://container/;` automatically forwards the request URI. With variable upstreams, it does NOT - you must explicitly add `$request_uri` or all paths will return the root page.
 
 ---
 
