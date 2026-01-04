@@ -28,6 +28,7 @@ jobs:
           touch personal-website/.env || true
           touch personal-website/.env.local || true
           touch reading-fluency/.env || true
+          touch deepeval/.env || true
       
       - name: Validate docker-compose.yml
         run: |

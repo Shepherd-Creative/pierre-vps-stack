@@ -1,4 +1,7 @@
 services:
+  # ===========================================
+  # nginx
+  # ===========================================
   nginx:
     image: nginx:alpine
     container_name: nginx
@@ -15,6 +18,9 @@ services:
     networks:
       - docker-apps-network
 
+  # ===========================================
+  # n8n
+  # ===========================================
   n8n:
     image: n8nio/n8n:1.121.3
     container_name: n8n
@@ -58,7 +64,9 @@ services:
   #   networks:
   #     - docker-apps-network
 
+  # ===========================================
   # Certbot - only runs manually for certificate renewal
+  # ===========================================
   certbot:
     image: certbot/certbot
     container_name: certbot
@@ -69,7 +77,9 @@ services:
     profiles:
       - certbot-renew  # Only runs with: docker compose --profile certbot-renew run certbot
 
+  # ===========================================
   # Neo4j Database for LightRAG and Graphiti
+  # ===========================================
   neo4j:
     image: neo4j:5.26.2
     container_name: neo4j
@@ -106,7 +116,9 @@ services:
     networks:
       - docker-apps-network
 
+  # ===========================================
   # LightRAG Service
+  # ===========================================
   lightrag:
     image: ghcr.io/hkuds/lightrag:latest
     container_name: lightrag
@@ -166,6 +178,28 @@ services:
         reservations:
           memory: 256M
           cpus: '0.1'
+
+  # ===========================================
+  # DeepEval LLM Evaluation API
+  # ===========================================
+  deepeval:
+    build:
+      context: ./deepeval
+      dockerfile: Dockerfile
+    container_name: deepeval
+    restart: unless-stopped
+    env_file:
+      - ./deepeval/.env
+    expose:
+      - 8000
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.2'
     networks:
       - docker-apps-network
 
@@ -349,7 +383,9 @@ services:
   #   networks:
   #     - docker-apps-network
 
+  # ===========================================
   # Qdrant Vector Database
+  # ===========================================
   qdrant:
     image: qdrant/qdrant:latest
     container_name: qdrant
@@ -367,7 +403,10 @@ services:
     networks:
       - docker-apps-network
 
+
+  # ===========================================
   # Chonkie Backend API
+  # ===========================================
   chonkie:
     build: ./chonkie
     container_name: chonkie
@@ -394,7 +433,9 @@ services:
           memory: 512M
           cpus: '0.25'
 
+  # ===========================================
   # Chonkie Visualizer Frontend
+  # ===========================================
   chonkie-visualizer:
     image: node:20-alpine
     container_name: chonkie-visualizer
@@ -418,7 +459,9 @@ services:
     networks:
       - docker-apps-network
 
-  # === MONITORING STACK ===
+  # ===========================================
+  # MONITORING STACK
+  # ===========================================
   prometheus:
     image: prom/prometheus:v2.47.2
     container_name: prometheus
@@ -448,6 +491,9 @@ services:
     networks:
       - docker-apps-network
 
+  # ===========================================
+  # Grafana
+  # ===========================================
   grafana:
     image: grafana/grafana:10.1.5
     container_name: grafana
@@ -475,6 +521,9 @@ services:
     networks:
       - docker-apps-network
 
+  # ===========================================
+  # cadvisor
+  # ===========================================
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.47.2
     container_name: cadvisor
@@ -493,6 +542,9 @@ services:
     networks:
       - docker-apps-network
 
+  # ===========================================
+  # node-exporter
+  # ===========================================
   node-exporter:
     image: prom/node-exporter:v1.6.1
     container_name: node-exporter
@@ -535,7 +587,9 @@ services:
     networks:
       - docker-apps-network
 
+  # ===========================================
   # Reading Fluency App
+  # ===========================================
   reading-fluency:
     build:
       context: ./reading-fluency
