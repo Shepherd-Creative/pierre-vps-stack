@@ -22,7 +22,7 @@ RUN chown chonkie:chonkie /home/chonkie/chonkie_api_enhanced.py
 USER chonkie
 
 # Install Chonkie with core dependencies only
-RUN pip install --user chonkie sentence-transformers
+RUN pip install --user chonkie sentence-transformers httpx
 
 EXPOSE 8000
 
