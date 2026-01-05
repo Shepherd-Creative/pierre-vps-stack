@@ -21,8 +21,12 @@ RUN chown chonkie:chonkie /home/chonkie/chonkie_api_enhanced.py
 
 USER chonkie
 
-# Install Chonkie with core dependencies only
-RUN pip install --user chonkie sentence-transformers httpx
+# Install packages WITHOUT downloading models
+RUN pip install --user --no-cache-dir chonkie sentence-transformers httpx
+
+# Set cache directory to volume mount (models download at runtime, not build time)
+ENV TRANSFORMERS_CACHE=/home/chonkie/data/models
+ENV SENTENCE_TRANSFORMERS_HOME=/home/chonkie/data/models
 
 EXPOSE 8000
 
