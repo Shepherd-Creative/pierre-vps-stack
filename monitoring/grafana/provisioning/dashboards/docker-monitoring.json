@@ -91,9 +91,9 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "rate(container_cpu_usage_seconds_total{name!=\"\"}[5m]) * 100",
+          "expr": "rate(container_cpu_usage_seconds_total{id=~\"/system.slice/docker-.*\"}[5m]) * 100",
           "interval": "",
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{id}}",
           "refId": "A"
         }
       ],
@@ -173,9 +173,9 @@
       "pluginVersion": "8.0.0",
       "targets": [
         {
-          "expr": "container_memory_usage_bytes{name!=\"\"}",
+          "expr": "container_memory_usage_bytes{id=~\"/system.slice/docker-.*\"}",
           "interval": "",
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{id}}",
           "refId": "A"
         }
       ],
@@ -237,6 +237,67 @@
         }
       ],
       "title": "System Memory Usage %",
+      "type": "gauge"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 60
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 5,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "interval": "",
+          "legendFormat": "System CPU Usage",
+          "refId": "A"
+        }
+      ],
+      "title": "System CPU Usage %",
       "type": "gauge"
     }
   ],
