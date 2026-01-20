@@ -40,9 +40,18 @@ npm-debug.log
 backups/
 *.backup
 *.bak
+.env.backup*
 
 # Temporary files
 tmp/
 temp/
 *.tmp
-chonkie/chonkie-visualizer/.next/
+
+# Next.js build outputs (contain auto-generated keys)
+.next/
+*/.next/
+**/.next/
+
+# Security scan reports
+gitleaks-report.json
+*.gitleaks.json

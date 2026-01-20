@@ -1,13 +1,15 @@
 _format_version: "2.1"
 _transform: true
 
+# NOTE: Replace these placeholder keys with your actual Supabase JWT keys
+# Generate keys using: https://supabase.com/docs/guides/self-hosting
 consumers:
   - username: anon
     keyauth_credentials:
-      - key: REDACTED_SUPABASE_ANON_JWT
+      - key: YOUR_SUPABASE_ANON_KEY_HERE
   - username: service_role
     keyauth_credentials:
-      - key: REDACTED_SUPABASE_SERVICE_JWT
+      - key: YOUR_SUPABASE_SERVICE_KEY_HERE
 
 acls:
   - consumer: anon
