@@ -340,7 +340,7 @@ services:
   #     API_JWT_SECRET: ${SUPABASE_JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters-long}
   #     FLY_ALLOC_ID: fly123
   #     FLY_APP_NAME: realtime
-  #     SECRET_KEY_BASE: ${REALTIME_SECRET_KEY:-REDACTED_REALTIME_KEY}
+  #     SECRET_KEY_BASE: ${REALTIME_SECRET_KEY:-UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq}
   #   expose:
   #     - 4000
   #   networks:
