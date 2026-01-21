@@ -532,10 +532,6 @@ services:
     container_name: cadvisor
     restart: unless-stopped
     privileged: true
-    command:
-      - '--docker_only=true'
-      - '--store_container_labels=true'
-      - '--whitelisted_container_labels=com.docker.compose.service,com.docker.compose.project'
     devices:
       - /dev/kmsg:/dev/kmsg
     volumes:
