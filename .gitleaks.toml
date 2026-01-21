@@ -1,0 +1,21 @@
+# Gitleaks configuration
+# https://github.com/gitleaks/gitleaks
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist for false positives"
+
+# Placeholder strings in documentation
+regexTarget = "match"
+regexes = [
+    '''YOUR_API_KEY''',
+    '''sk-1234567890abcdef1234567890abcdef''',
+]
+
+# Paths that contain example/documentation content
+paths = [
+    '''.*README\.md$''',
+    '''.*SETUP_INSTRUCTIONS\.md$''',
+]
