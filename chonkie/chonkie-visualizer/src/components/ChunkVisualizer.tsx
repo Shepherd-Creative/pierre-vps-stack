@@ -63,8 +63,20 @@ const EMBEDDING_MODELS: { [key: string]: string[] } = {
   ]
 };
 
+const DEFAULT_TEXT = `The Critical Role of Chunking in RAG Applications
+
+How Strategic Text Segmentation Determines Retrieval Quality and System Performance
+
+Chunking represents one of the most consequential yet often underestimated design decisions in Retrieval-Augmented Generation systems. The process of dividing source documents into smaller, semantically coherent segments directly impacts retrieval accuracy, context relevance, and ultimately the quality of generated responses. Poor chunking strategies lead to fragmented context, where critical information spans multiple chunks, or bloated retrievals that overwhelm the model's context window with irrelevant details. The art and science of chunking requires balancing granularity with coherence—segments must be small enough for precise retrieval yet large enough to preserve meaningful context.
+
+The relationship between chunk size and retrieval performance follows a nuanced curve rather than a linear progression. Smaller chunks (100-200 tokens) enable pinpoint accuracy for specific facts but risk losing surrounding context that provides necessary interpretation. Larger chunks (500-1000 tokens) preserve narrative flow and relationships but may dilute relevance scores when only a portion of the content matches the query. Advanced chunking strategies now employ semantic segmentation—analyzing document structure, topic boundaries, and discourse patterns rather than arbitrary token counts. This approach, combined with overlapping windows that allow chunks to share boundary content, helps maintain contextual threads across segments.
+
+Modern RAG architectures increasingly treat chunking as a multi-dimensional problem requiring adaptive strategies based on content type and use case. Technical documentation benefits from structure-aware chunking that respects hierarchies like headers, code blocks, and procedure steps. Conversational data requires different treatment, where turn boundaries and topic shifts guide segmentation. Knowledge graph-enhanced systems like LightRAG can leverage entity relationships to inform chunk boundaries, creating segments that preserve meaningful connections between concepts rather than arbitrary splits that sever semantic links.
+
+The downstream effects of chunking decisions cascade through every component of a RAG system. Vector embeddings generated from well-formed chunks produce more discriminative representations in semantic space, improving retrieval precision. Chunk metadata—including position, parent document, and structural role—enables sophisticated reranking and context assembly strategies. As RAG systems evolve toward agentic architectures with multi-hop reasoning, the ability to efficiently traverse and recombine chunks becomes paramount. Investing time in chunking strategy optimization often yields greater performance gains than switching embedding models or adjusting retrieval parameters, making it a leverage point that deserves careful consideration in any production RAG implementation.`;
+
 export default function ChunkVisualizer() {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(DEFAULT_TEXT);
   const [config, setConfig] = useState<ChunkConfig>({
     chunkerType: 'TokenChunker',
     chunkSize: 100,
@@ -148,17 +160,10 @@ export default function ChunkVisualizer() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-2">Chonkie Chunk Visualizer</h1>
-        <p className="text-muted-foreground">
-          Test different chunking strategies and visualize how your text gets split
-        </p>
-      </div>
-
+    <div className="w-[95%] max-w-[1400px] mx-auto p-6 space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <Card>
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
@@ -178,7 +183,7 @@ export default function ChunkVisualizer() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
@@ -342,7 +347,7 @@ export default function ChunkVisualizer() {
         </div>
 
         <div>
-          <Card>
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle>Chunk Results</CardTitle>
               {result && (

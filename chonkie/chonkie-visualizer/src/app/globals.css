@@ -23,7 +23,7 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 
   .dark {
@@ -55,5 +55,48 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Glassmorphism Classes */
+@layer components {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.04),
+      0 2px 4px -1px rgba(0, 0, 0, 0.02),
+      0 0 0 1px rgba(200, 220, 255, 0.1);
+    transform: translateZ(0);
+    will-change: transform;
+    contain: paint;
+  }
+
+  .dark .glass-card {
+    background: rgba(30, 35, 50, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 2px 4px -1px rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(100, 150, 255, 0.05);
+  }
+
+  .glass-card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card-hover:hover {
+    background: rgba(255, 255, 255, 0.35);
+    box-shadow:
+      0 10px 25px -5px rgba(100, 150, 255, 0.15),
+      0 4px 10px -5px rgba(0, 0, 0, 0.04),
+      0 0 0 1px rgba(100, 150, 255, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .dark .glass-card-hover:hover {
+    background: rgba(30, 35, 50, 0.4);
   }
 }
