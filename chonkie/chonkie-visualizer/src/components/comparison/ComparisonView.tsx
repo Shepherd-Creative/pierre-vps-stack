@@ -1,14 +1,16 @@
 'use client';
 
 import { useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { useComparison } from '@/contexts/ComparisonContext';
-import { ComparisonPanel } from './ComparisonPanel';
+import { StackedComparePanel } from './StackedComparePanel';
 import type { ChunkResponse } from '@/types/chonkie';
 
 export function ComparisonView() {
   const { state, dispatch } = useComparison();
+
+  const handleTextChange = useCallback((text: string) => {
+    dispatch({ type: 'SET_TEXT', text });
+  }, [dispatch]);
 
   const processPanel = useCallback(async (panel: 'left' | 'right') => {
     const config = panel === 'left' ? state.leftPanel.config : state.rightPanel.config;
@@ -41,42 +43,29 @@ export function ComparisonView() {
   }, [state.sharedText, state.leftPanel.config, state.rightPanel.config, dispatch]);
 
   return (
-    <div className="w-[95%] max-w-[1400px] mx-auto space-y-6">
-      {/* Shared Text Input */}
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle>Input Text (Shared)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder="Enter your text here to compare chunking strategies..."
-            value={state.sharedText}
-            onChange={(e) => dispatch({ type: 'SET_TEXT', text: e.target.value })}
-            className="min-h-[150px]"
-          />
-        </CardContent>
-      </Card>
-
-      {/* Side-by-Side Panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ComparisonPanel
+    <div className="w-[95%] max-w-[1600px] mx-auto">
+      {/* Side-by-Side Stacked Panels with aligned rows */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[auto_auto_1fr] gap-6">
+        <StackedComparePanel
           title="Configuration A"
           config={state.leftPanel.config}
           result={state.leftPanel.result}
           loading={state.leftPanel.loading}
           error={state.leftPanel.error}
           sharedText={state.sharedText}
+          onTextChange={handleTextChange}
           onConfigChange={(updates) => dispatch({ type: 'UPDATE_LEFT_CONFIG', config: updates })}
           onProcess={() => processPanel('left')}
         />
 
-        <ComparisonPanel
+        <StackedComparePanel
           title="Configuration B"
           config={state.rightPanel.config}
           result={state.rightPanel.result}
           loading={state.rightPanel.loading}
           error={state.rightPanel.error}
           sharedText={state.sharedText}
+          onTextChange={handleTextChange}
           onConfigChange={(updates) => dispatch({ type: 'UPDATE_RIGHT_CONFIG', config: updates })}
           onProcess={() => processPanel('right')}
         />

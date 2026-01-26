@@ -1,12 +1,35 @@
 export interface ChunkConfig {
   chunkerType: 'TokenChunker' | 'SentenceChunker' | 'RecursiveChunker' | 'SemanticChunker' | 'CodeChunker' | 'NeuralChunker';
-  chunkSize: number;
-  chunkOverlap: number;
+
+  // Conditionally applicable
+  chunkSize?: number;
+  chunkOverlap?: number;
+
+  // TokenChunker
   tokenizerType?: 'CharacterTokenizer' | 'WordTokenizer';
-  embeddingProvider?: 'sentence-transformers' | 'openai' | 'cohere' | 'gemini' | 'jina' | 'voyage' | 'auto';
+
+  // SentenceChunker & SemanticChunker
+  minSentencesPerChunk?: number;
+  minCharactersPerSentence?: number;
+
+  // SemanticChunker
+  embeddingProvider?: 'sentence-transformers' | 'model2vec' | 'openai' | 'cohere' | 'gemini' | 'jina' | 'voyage' | 'auto';
   embeddingModel?: string;
   semanticThreshold?: number;
+  similarityWindow?: number;
+  skipWindow?: number;
+
+  // CodeChunker
   language?: string;
+  includeNodes?: boolean;
+
+  // RecursiveChunker & NeuralChunker
+  minCharactersPerChunk?: number;
+
+  // NeuralChunker
+  neuralModel?: string;
+  deviceMap?: string;
+  stride?: number;
 }
 
 export interface ChunkResult {
