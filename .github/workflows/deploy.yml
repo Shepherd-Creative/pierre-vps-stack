@@ -55,10 +55,13 @@ jobs:
             echo "$CHANGED_FILES"
 
             SERVICES_TO_BUILD=""
+            SERVICES_TO_RESTART=""
             for file in $CHANGED_FILES; do
               case "$file" in
+                # More specific patterns first (nested directories)
+                chonkie/chonkie-visualizer/*) SERVICES_TO_RESTART="$SERVICES_TO_RESTART chonkie-visualizer" ;;
+                # Then general patterns
                 chonkie/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD chonkie" ;;
-                chonkie-visualizer/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD chonkie-visualizer" ;;
                 graphiti/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD graphiti" ;;
                 deepeval/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD deepeval" ;;
                 personal-website/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD personal-website" ;;
@@ -69,8 +72,9 @@ jobs:
 
             # Remove duplicates
             SERVICES_TO_BUILD=$(echo "$SERVICES_TO_BUILD" | tr ' ' '\n' | sort -u | tr '\n' ' ' | xargs)
+            SERVICES_TO_RESTART=$(echo "$SERVICES_TO_RESTART" | tr ' ' '\n' | sort -u | tr '\n' ' ' | xargs)
 
-            if [ -z "$SERVICES_TO_BUILD" ]; then
+            if [ -z "$SERVICES_TO_BUILD" ] && [ -z "$SERVICES_TO_RESTART" ]; then
               echo "ℹ️ No service directories changed. Only infrastructure files updated."
               echo "🔄 Restarting all services without rebuild..."
               docker compose up -d
@@ -79,15 +83,25 @@ jobs:
               docker container prune -f
               docker compose up -d --build --remove-orphans
             else
-              echo "🏗️ Changed services: $SERVICES_TO_BUILD"
-              echo "Building and deploying only these services..."
-
               docker container prune -f
 
-              for service in $SERVICES_TO_BUILD; do
-                echo "  → Deploying $service..."
-                docker compose up -d --build --no-deps $service
-              done
+              # Rebuild services that need building (have Dockerfiles)
+              if [ -n "$SERVICES_TO_BUILD" ]; then
+                echo "🏗️ Building services: $SERVICES_TO_BUILD"
+                for service in $SERVICES_TO_BUILD; do
+                  echo "  → Building $service..."
+                  docker compose up -d --build --no-deps $service
+                done
+              fi
+
+              # Restart services that use volume mounts (no build needed)
+              if [ -n "$SERVICES_TO_RESTART" ]; then
+                echo "🔄 Restarting services: $SERVICES_TO_RESTART"
+                for service in $SERVICES_TO_RESTART; do
+                  echo "  → Restarting $service..."
+                  docker compose up -d --force-recreate --no-deps $service
+                done
+              fi
             fi
 
             # Wait for services to stabilize
