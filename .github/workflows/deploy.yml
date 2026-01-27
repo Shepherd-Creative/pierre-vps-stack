@@ -43,9 +43,13 @@ jobs:
               git submodule update --init --recursive || echo "⚠️ Submodule update skipped"
             fi
             
+            # Clean up any orphaned containers from failed recreations
+            echo "🧹 Cleaning up orphaned containers..."
+            docker container prune -f
+
             # Rebuild and restart services
             echo "🏗️  Rebuilding and restarting Docker services..."
-            docker compose up -d --build
+            docker compose up -d --build --remove-orphans
             
             # Wait for services to stabilize
             sleep 5
