@@ -440,25 +440,23 @@ services:
   # Chonkie Visualizer Frontend
   # ===========================================
   chonkie-visualizer:
-    image: node:20-alpine
+    build:
+      context: ./chonkie/chonkie-visualizer
+      dockerfile: Dockerfile
     container_name: chonkie-visualizer
     restart: unless-stopped
     depends_on:
       - chonkie
-    working_dir: /app
-    volumes:
-      - ./chonkie/chonkie-visualizer:/app
     expose:
       - 3001
-    command: sh -c "npm install && SKIP_ENV_VALIDATION=1 npm run build -- --no-lint && npm start"
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: '0.5'
-        reservations:
-          memory: 512M
+          memory: 256M
           cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
     networks:
       - docker-apps-network
 

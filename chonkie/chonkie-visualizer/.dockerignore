@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+*.md
+.env*
+.DS_Store
+*.png
+*.jpg
+*.jpeg
+Screenshot*
+tsconfig.tsbuildinfo
