@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -10,19 +11,6 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
     },
-  },
-  async rewrites() {
-    // Use localhost for local dev, Docker container name for production
-    const apiHost = process.env.NODE_ENV === 'development'
-      ? 'http://localhost:8000'
-      : 'http://chonkie:8000';
-
-    return [
-      {
-        source: '/api/chunk',
-        destination: `${apiHost}/chunk`,
-      },
-    ]
   },
 };
 

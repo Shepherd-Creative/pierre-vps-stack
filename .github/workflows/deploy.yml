@@ -59,7 +59,7 @@ jobs:
             for file in $CHANGED_FILES; do
               case "$file" in
                 # More specific patterns first (nested directories)
-                chonkie/chonkie-visualizer/*) SERVICES_TO_RESTART="$SERVICES_TO_RESTART chonkie-visualizer" ;;
+                chonkie/chonkie-visualizer/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD chonkie-visualizer" ;;
                 # Then general patterns
                 chonkie/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD chonkie" ;;
                 graphiti/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD graphiti" ;;
@@ -106,6 +106,10 @@ jobs:
 
             # Wait for services to stabilize
             sleep 5
+
+            # Clean up unused images to save disk space
+            echo "🧹 Cleaning up unused images..."
+            docker image prune -f
 
             # Show status
             echo ""
