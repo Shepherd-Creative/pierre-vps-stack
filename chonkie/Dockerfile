@@ -15,7 +15,8 @@ RUN pip install --no-cache-dir \
     uvicorn \
     "chonkie[openai]" \
     sentence-transformers \
-    httpx
+    httpx \
+    accelerate
 
 # Pre-download the default model to bake into image
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
