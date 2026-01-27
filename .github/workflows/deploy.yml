@@ -29,36 +29,75 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no pierre_sudo_user@46.202.128.120 << 'ENDSSH'
             set -e
-            
+
             echo "📦 Deploying to VPS..."
             cd /home/pierre_sudo_user/docker-apps
-            
+
+            # Store current commit before pull
+            OLD_COMMIT=$(git rev-parse HEAD)
+
             # Pull latest changes
             echo "🔄 Pulling latest code from GitHub..."
             git pull origin main
-            
+
+            NEW_COMMIT=$(git rev-parse HEAD)
+
             # Update submodules if they exist
             if [ -f .gitmodules ]; then
               echo "🔄 Updating submodules..."
               git submodule update --init --recursive || echo "⚠️ Submodule update skipped"
             fi
-            
-            # Clean up any orphaned containers from failed recreations
-            echo "🧹 Cleaning up orphaned containers..."
-            docker container prune -f
 
-            # Rebuild and restart services
-            echo "🏗️  Rebuilding and restarting Docker services..."
-            docker compose up -d --build --remove-orphans
-            
+            # Detect which services changed
+            echo "🔍 Detecting changed services..."
+            CHANGED_FILES=$(git diff --name-only $OLD_COMMIT $NEW_COMMIT)
+            echo "Changed files:"
+            echo "$CHANGED_FILES"
+
+            SERVICES_TO_BUILD=""
+            for file in $CHANGED_FILES; do
+              case "$file" in
+                chonkie/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD chonkie" ;;
+                chonkie-visualizer/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD chonkie-visualizer" ;;
+                graphiti/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD graphiti" ;;
+                deepeval/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD deepeval" ;;
+                personal-website/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD personal-website" ;;
+                reading-fluency/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD reading-fluency" ;;
+                docker-compose.yml|.env*) SERVICES_TO_BUILD="ALL" ;;
+              esac
+            done
+
+            # Remove duplicates
+            SERVICES_TO_BUILD=$(echo "$SERVICES_TO_BUILD" | tr ' ' '\n' | sort -u | tr '\n' ' ' | xargs)
+
+            if [ -z "$SERVICES_TO_BUILD" ]; then
+              echo "ℹ️ No service directories changed. Only infrastructure files updated."
+              echo "🔄 Restarting all services without rebuild..."
+              docker compose up -d
+            elif [ "$SERVICES_TO_BUILD" = "ALL" ]; then
+              echo "🏗️ docker-compose.yml or .env changed - rebuilding all services..."
+              docker container prune -f
+              docker compose up -d --build --remove-orphans
+            else
+              echo "🏗️ Changed services: $SERVICES_TO_BUILD"
+              echo "Building and deploying only these services..."
+
+              docker container prune -f
+
+              for service in $SERVICES_TO_BUILD; do
+                echo "  → Deploying $service..."
+                docker compose up -d --build --no-deps $service
+              done
+            fi
+
             # Wait for services to stabilize
             sleep 5
-            
+
             # Show status
             echo ""
             echo "📊 Service Status:"
             docker compose ps
-            
+
             echo ""
             echo "✅ Deployment complete!"
           ENDSSH
