@@ -152,10 +152,11 @@ def create_chunker(config: ChunkConfig):
         include_delim = getattr(config, 'includeDelim', None)
 
         # Handle delimiter settings properly
+        # Default to "prev" (library default) to preserve punctuation at end of sentences
         if include_delim == "" or include_delim == "none":
             include_delim = None
-        elif include_delim not in ['prev', 'next']:
-            include_delim = None  # Default to None for invalid values
+        elif include_delim is None or include_delim not in ['prev', 'next', None]:
+            include_delim = "prev"  # Default to "prev" to preserve sentence-ending punctuation
 
         return chonkie.SemanticChunker(
             embedding_model=embeddings,
