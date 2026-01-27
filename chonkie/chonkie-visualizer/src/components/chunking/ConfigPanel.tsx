@@ -7,90 +7,15 @@ import { Slider } from '@/components/ui/slider';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Loader2, Eye } from 'lucide-react';
 import type { ChunkConfig } from '@/types/chonkie';
-
-const CHUNKER_OPTIONS = [
-  { value: 'TokenChunker', label: 'Token Chunker', description: 'Fixed-size chunks with optional overlap', requiresEmbeddings: false },
-  { value: 'SentenceChunker', label: 'Sentence Chunker', description: 'Sentence-boundary aware chunking', requiresEmbeddings: false },
-  { value: 'RecursiveChunker', label: 'Recursive Chunker', description: 'Hierarchical splitting (paragraphs → sentences → words)', requiresEmbeddings: false },
-  { value: 'SemanticChunker', label: 'Semantic Chunker', description: 'AI-powered semantic boundary detection', requiresEmbeddings: true },
-  { value: 'CodeChunker', label: 'Code Chunker', description: 'Syntax-aware code chunking with tree-sitter', requiresEmbeddings: false },
-  { value: 'NeuralChunker', label: 'Neural Chunker', description: 'Neural model predicts optimal split points', requiresEmbeddings: true },
-];
-
-const TOKENIZER_OPTIONS = [
-  { value: 'CharacterTokenizer', label: 'Character Tokenizer' },
-  { value: 'WordTokenizer', label: 'Word Tokenizer' },
-];
-
-const EMBEDDING_PROVIDERS = [
-  { value: 'sentence-transformers', label: 'Sentence Transformers (Local)', description: 'Free, runs locally', authorised: false },
-  { value: 'model2vec', label: 'Model2Vec (Local)', description: 'Free, runs locally', authorised: false },
-  { value: 'openai', label: 'OpenAI Embeddings', description: 'API Key Authorised', authorised: true },
-  { value: 'cohere', label: 'Cohere Embeddings', description: 'Requires API key', authorised: false },
-  { value: 'gemini', label: 'Google Gemini', description: 'Requires API key', authorised: false },
-  { value: 'jina', label: 'Jina AI', description: 'Requires API key', authorised: false },
-  { value: 'voyage', label: 'Voyage AI', description: 'Requires API key', authorised: false },
-  { value: 'auto', label: 'Auto (Best Available)', description: 'Automatically selects', authorised: false },
-];
-
-const EMBEDDING_MODELS: { [key: string]: string[] } = {
-  'sentence-transformers': [
-    'all-MiniLM-L6-v2',
-    'all-mpnet-base-v2',
-    'multi-qa-MiniLM-L6-cos-v1',
-    'paraphrase-multilingual-MiniLM-L12-v2'
-  ],
-  'model2vec': [
-    'minishlab/potion-base-32M'
-  ],
-  'openai': [
-    'text-embedding-3-small',
-    'text-embedding-3-large',
-    'text-embedding-ada-002'
-  ],
-  'cohere': [
-    'embed-english-v3.0',
-    'embed-multilingual-v3.0'
-  ],
-  'gemini': [
-    'embedding-001'
-  ],
-  'jina': [
-    'jina-embeddings-v2-base-en'
-  ],
-  'voyage': [
-    'voyage-2'
-  ],
-  'auto': [
-    'auto'
-  ]
-};
-
-const CODE_LANGUAGES = [
-  { value: 'auto', label: 'Auto-detect' },
-  { value: 'python', label: 'Python' },
-  { value: 'javascript', label: 'JavaScript' },
-  { value: 'typescript', label: 'TypeScript' },
-  { value: 'java', label: 'Java' },
-  { value: 'cpp', label: 'C++' },
-  { value: 'go', label: 'Go' },
-  { value: 'rust', label: 'Rust' },
-];
-
-const PARAMETER_VISIBILITY: Record<string, string[]> = {
-  chunkSize: ['TokenChunker', 'SentenceChunker', 'RecursiveChunker', 'SemanticChunker', 'CodeChunker'],
-  chunkOverlap: ['TokenChunker', 'SentenceChunker'],
-  tokenizerType: ['TokenChunker'],
-  embeddingProvider: ['SemanticChunker'],
-  semanticThreshold: ['SemanticChunker'],
-  language: ['CodeChunker'],
-  neuralModel: ['NeuralChunker'],
-  minCharactersPerChunk: ['RecursiveChunker', 'NeuralChunker'],
-};
-
-const shouldShowParameter = (param: string, chunkerType: string): boolean => {
-  return PARAMETER_VISIBILITY[param]?.includes(chunkerType) ?? false;
-};
+import {
+  CHUNKER_OPTIONS,
+  TOKENIZER_OPTIONS,
+  EMBEDDING_PROVIDERS,
+  EMBEDDING_MODELS,
+  CODE_LANGUAGES,
+  PARAMETER_VISIBILITY,
+  shouldShowParameter,
+} from '@/constants/chunking';
 
 interface ConfigPanelProps {
   config: ChunkConfig;
@@ -187,7 +112,7 @@ export function ConfigPanel({
 
       {shouldShowParameter('chunkSize', config.chunkerType) && (
         <div>
-          <Label>Chunk Size: {config.chunkSize}</Label>
+          <Label>Max Tokens Per Chunk: {config.chunkSize}</Label>
           <Slider
             value={[config.chunkSize || 512]}
             onValueChange={([value]) => onConfigChange({ chunkSize: value })}
@@ -197,7 +122,11 @@ export function ConfigPanel({
             className="mt-2"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Maximum tokens per chunk
+            {config.chunkerType === 'TokenChunker' && 'Hard limit - chunks will be split to respect this exactly'}
+            {config.chunkerType === 'SentenceChunker' && 'Soft limit - sentences won\'t be split even if they exceed this'}
+            {config.chunkerType === 'RecursiveChunker' && 'Target limit - uses hierarchical splitting to approach this size'}
+            {config.chunkerType === 'SemanticChunker' && 'Target limit - semantic boundaries take priority'}
+            {config.chunkerType === 'CodeChunker' && 'Target limit - syntax boundaries take priority'}
           </p>
         </div>
       )}
@@ -527,15 +456,18 @@ export function ConfigPanel({
                   </div>
 
                   <div>
-                    <Label>Min Characters Per Chunk: {config.minCharactersPerChunk || 10}</Label>
+                    <Label>Min Characters Per Chunk (1 token ≈ 4 chars): {config.minCharactersPerChunk || 10}</Label>
                     <Slider
                       value={[config.minCharactersPerChunk || 10]}
                       onValueChange={([value]) => onConfigChange({ minCharactersPerChunk: value })}
-                      max={100}
+                      max={800}
                       min={5}
                       step={5}
                       className="mt-2"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Minimum floor - neural model decides boundaries above this
+                    </p>
                   </div>
                 </>
               )}

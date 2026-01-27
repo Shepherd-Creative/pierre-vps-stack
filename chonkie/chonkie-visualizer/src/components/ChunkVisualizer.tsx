@@ -10,60 +10,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Loader2, FileText, Settings, Eye } from 'lucide-react';
 import type { ChunkConfig, ChunkResponse } from '@/types/chonkie';
 import { getChunkColor, getChunkHighlightBg, getChunkOverlaps, calculateTextSegments } from '@/lib/chunkVisualization';
-
-const CHUNKER_OPTIONS = [
-  { value: 'TokenChunker', label: 'Token Chunker', description: 'Split by token count', requiresEmbeddings: false },
-  { value: 'SentenceChunker', label: 'Sentence Chunker', description: 'Split by sentences', requiresEmbeddings: false },
-  { value: 'RecursiveChunker', label: 'Recursive Chunker', description: 'Recursive splitting', requiresEmbeddings: false },
-  { value: 'SemanticChunker', label: 'Semantic Chunker', description: 'Semantic similarity', requiresEmbeddings: true },
-  { value: 'CodeChunker', label: 'Code Chunker', description: 'Code-aware splitting', requiresEmbeddings: false },
-  { value: 'NeuralChunker', label: 'Neural Chunker', description: 'AI-powered chunking', requiresEmbeddings: true },
-];
-
-const TOKENIZER_OPTIONS = [
-  { value: 'CharacterTokenizer', label: 'Character Tokenizer' },
-  { value: 'WordTokenizer', label: 'Word Tokenizer' },
-];
-
-const EMBEDDING_PROVIDERS = [
-  { value: 'sentence-transformers', label: 'Sentence Transformers (Local)', description: 'Free, runs locally', authorised: false },
-  { value: 'openai', label: 'OpenAI Embeddings', description: 'API Key Authorised', authorised: true },
-  { value: 'cohere', label: 'Cohere Embeddings', description: 'Requires API key', authorised: false },
-  { value: 'gemini', label: 'Google Gemini', description: 'Requires API key', authorised: false },
-  { value: 'jina', label: 'Jina AI', description: 'Requires API key', authorised: false },
-  { value: 'voyage', label: 'Voyage AI', description: 'Requires API key', authorised: false },
-  { value: 'auto', label: 'Auto (Best Available)', description: 'Automatically selects', authorised: false },
-];
-
-const EMBEDDING_MODELS: { [key: string]: string[] } = {
-  'sentence-transformers': [
-    'all-MiniLM-L6-v2',
-    'all-mpnet-base-v2',
-    'multi-qa-MiniLM-L6-cos-v1',
-    'paraphrase-multilingual-MiniLM-L12-v2'
-  ],
-  'openai': [
-    'text-embedding-3-small',
-    'text-embedding-3-large',
-    'text-embedding-ada-002'
-  ],
-  'cohere': [
-    'embed-english-v3.0',
-    'embed-multilingual-v3.0'
-  ],
-  'gemini': [
-    'embedding-001'
-  ],
-  'jina': [
-    'jina-embeddings-v2-base-en'
-  ],
-  'voyage': [
-    'voyage-2'
-  ],
-  'auto': [
-    'auto'
-  ]
-};
+import {
+  CHUNKER_OPTIONS,
+  TOKENIZER_OPTIONS,
+  EMBEDDING_PROVIDERS,
+  EMBEDDING_MODELS,
+  CODE_LANGUAGES,
+} from '@/constants/chunking';
 
 const DEFAULT_TEXT = `The Critical Role of Chunking in RAG Applications
 
@@ -116,11 +69,11 @@ export default function ChunkVisualizer() {
       return hasSelectedTokenizer;
     }
 
-    if (config.chunkerType === 'SemanticChunker' || config.chunkerType === 'NeuralChunker') {
+    if (config.chunkerType === 'SemanticChunker') {
       return hasSelectedProvider && hasSelectedModel;
     }
 
-    // Other chunkers (SentenceChunker, RecursiveChunker, CodeChunker) only need chunker selected
+    // Other chunkers (SentenceChunker, RecursiveChunker, CodeChunker, NeuralChunker) only need chunker selected
     return true;
   })();
 
@@ -508,17 +461,70 @@ export default function ChunkVisualizer() {
                 </AccordionItem>
               </Accordion>
 
-              <div>
-                <Label>Chunk Size: {config.chunkSize}</Label>
-                <Slider
-                  value={[config.chunkSize || 512]}
-                  onValueChange={([value]) => setConfig(prev => ({ ...prev, chunkSize: value }))}
-                  max={1000}
-                  min={10}
-                  step={10}
-                  className="mt-2"
-                />
-              </div>
+              {/* Max Tokens - shown for all chunkers except NeuralChunker */}
+              {config.chunkerType !== 'NeuralChunker' && (
+                <div>
+                  <Label>Max Tokens Per Chunk: {config.chunkSize}</Label>
+                  <Slider
+                    value={[config.chunkSize || 512]}
+                    onValueChange={([value]) => setConfig(prev => ({ ...prev, chunkSize: value }))}
+                    max={1000}
+                    min={10}
+                    step={10}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {config.chunkerType === 'TokenChunker' && 'Hard limit - chunks will be split to respect this exactly'}
+                    {config.chunkerType === 'SentenceChunker' && 'Soft limit - sentences won\'t be split even if they exceed this'}
+                    {config.chunkerType === 'RecursiveChunker' && 'Target limit - uses hierarchical splitting to approach this size'}
+                    {config.chunkerType === 'SemanticChunker' && 'Target limit - semantic boundaries take priority'}
+                    {config.chunkerType === 'CodeChunker' && 'Target limit - syntax boundaries take priority'}
+                  </p>
+                </div>
+              )}
+
+              {/* Programming Language - shown only for CodeChunker */}
+              {config.chunkerType === 'CodeChunker' && (
+                <div>
+                  <Label className="mb-2 block">Programming Language</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {CODE_LANGUAGES.map((lang) => (
+                      <button
+                        key={lang.value}
+                        onClick={() => setConfig(prev => ({ ...prev, language: lang.value }))}
+                        className={`p-2 text-sm rounded-md border transition-colors ${
+                          (config.language || 'auto') === lang.value
+                            ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                            : 'border-border hover:bg-muted'
+                        }`}
+                      >
+                        {lang.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Specify the programming language for syntax-aware chunking. Auto-detect works for most cases.
+                  </p>
+                </div>
+              )}
+
+              {/* Min Characters - shown only for NeuralChunker */}
+              {config.chunkerType === 'NeuralChunker' && (
+                <div>
+                  <Label>Min Characters Per Chunk (1 token ≈ 4 chars): {config.minCharactersPerChunk || 10}</Label>
+                  <Slider
+                    value={[config.minCharactersPerChunk || 10]}
+                    onValueChange={([value]) => setConfig(prev => ({ ...prev, minCharactersPerChunk: value }))}
+                    max={800}
+                    min={5}
+                    step={5}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Minimum floor - neural model decides boundaries above this
+                  </p>
+                </div>
+              )}
 
               {config.chunkerType === 'TokenChunker' && (
                 <div>
@@ -576,7 +582,7 @@ export default function ChunkVisualizer() {
                 </Accordion>
               )}
 
-              {(config.chunkerType === 'SemanticChunker' || config.chunkerType === 'NeuralChunker') && (
+              {config.chunkerType === 'SemanticChunker' && (
                 <>
                   {/* Embedding Provider Accordion */}
                   <Accordion type="single" collapsible className="w-full" value={providerAccordion} onValueChange={setProviderAccordion}>

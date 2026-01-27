@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 RUN pip install --no-cache-dir \
     fastapi \
     uvicorn \
-    "chonkie[openai]" \
+    "chonkie[openai,model2vec]" \
     sentence-transformers \
     httpx \
     accelerate \
