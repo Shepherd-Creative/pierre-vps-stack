@@ -13,8 +13,13 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./nginx/html:/usr/share/nginx/html
       - ./nginx/auth:/etc/nginx/auth
+      - ./nginx/scripts/docker-entrypoint.sh:/docker-entrypoint.sh:ro
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
+    environment:
+      - N8N_CHAT_WEBHOOK_UUID=${N8N_CHAT_WEBHOOK_UUID}
+      - N8N_CHAT_AUTH_BASE64=${N8N_CHAT_AUTH_BASE64}
+    entrypoint: ["/docker-entrypoint.sh"]
     networks:
       - docker-apps-network
 
