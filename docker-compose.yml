@@ -27,6 +27,10 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
     tmpfs:
       - /var/cache/nginx:size=128m
       - /run:size=1m
@@ -150,13 +154,19 @@ services:
     expose:
       - 7474
       - 7687
-    read_only: true
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETUID
+      - SETGID
     tmpfs:
       - /tmp:size=64m
+      - /var/lib/neo4j/run:size=8m
     deploy:
       resources:
         limits:
@@ -494,6 +504,7 @@ services:
       - ALL
     tmpfs:
       - /tmp:size=64m
+      - /qdrant/snapshots:size=64m
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:6333/healthz || exit 1"]
       interval: 30s
@@ -770,6 +781,10 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
     tmpfs:
       - /var/cache/nginx:size=32m
       - /run:size=1m
