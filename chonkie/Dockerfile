@@ -26,6 +26,8 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # Stage 2: Runtime image (clean)
 FROM python:3.11-slim
 
+ENV PYTHONDONTWRITEBYTECODE=1
+
 WORKDIR /home/chonkie
 
 # Install only runtime dependencies (no build tools)
@@ -48,5 +50,8 @@ RUN chown chonkie:chonkie /home/chonkie/chonkie_api_enhanced.py
 USER chonkie
 
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://127.0.0.1:8000/ || exit 1
 
 CMD ["python", "-m", "uvicorn", "chonkie_api_enhanced:app", "--host", "0.0.0.0", "--port", "8000"]
