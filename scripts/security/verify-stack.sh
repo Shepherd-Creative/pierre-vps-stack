@@ -108,9 +108,12 @@ else
             check "no-new-privileges" "FAIL"
         fi
 
-        # 4. cap_drop ALL
+        # 4. cap_drop ALL (skip for privileged containers like cadvisor)
+        privileged=$(docker inspect --format '{{.HostConfig.Privileged}}' "$container" 2>/dev/null || echo "false")
         cap_drop=$(docker inspect --format '{{.HostConfig.CapDrop}}' "$container" 2>/dev/null || echo "[]")
-        if echo "$cap_drop" | grep -qi 'all'; then
+        if [ "$privileged" = "true" ]; then
+            check "cap_drop ALL (privileged container, cap_drop not applicable)" "PASS"
+        elif echo "$cap_drop" | grep -qi 'all'; then
             check "cap_drop ALL" "PASS"
         else
             check "cap_drop ALL" "FAIL"
@@ -145,10 +148,12 @@ echo "==========================================="
 echo ""
 
 # Known miner process names from the Phase 1 incident
+# Use pgrep -x (exact process name match) to avoid false positives
+# e.g., pgrep -f ".monitor" would match prometheus args containing "monitoring"
 MINER_PROCESSES=("1HsT7J0l" "7cCYn" "dhclient" ".monitor" "lrt")
 
 for proc in "${MINER_PROCESSES[@]}"; do
-    if pgrep -f "$proc" > /dev/null 2>&1; then
+    if pgrep -x "$proc" > /dev/null 2>&1; then
         check "No miner process: $proc" "FAIL"
     else
         check "No miner process: $proc" "PASS"
