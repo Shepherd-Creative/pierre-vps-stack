@@ -454,6 +454,14 @@ services:
       - chonkie
     expose:
       - 3001
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=64m
+      - /app/.next/cache:size=128m,uid=1001,gid=1001
     deploy:
       resources:
         limits:
