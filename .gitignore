@@ -55,3 +55,12 @@ temp/
 # Security scan reports
 gitleaks-report.json
 *.gitleaks.json
+
+# Security hardening notes
+security_hardening.md
+
+# Cleanup plans
+github_cleanup.md
+
+# GSD planning docs (local-only)
+.planning/
