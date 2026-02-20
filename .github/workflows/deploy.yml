@@ -19,15 +19,15 @@ jobs:
       - name: Add VPS to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H -T 10 46.202.128.120 >> ~/.ssh/known_hosts || echo "ssh-keyscan failed, will use StrictHostKeyChecking=no"
+          ssh-keyscan -H -T 10 -p 2222 46.202.128.120 >> ~/.ssh/known_hosts || echo "ssh-keyscan failed, will use StrictHostKeyChecking=no"
       
       - name: Test SSH connection
         run: |
-          ssh -o StrictHostKeyChecking=no pierre_sudo_user@46.202.128.120 'echo "✅ SSH connection successful"'
+          ssh -p 2222 -o StrictHostKeyChecking=no pierre_sudo_user@46.202.128.120 'echo "✅ SSH connection successful"'
       
       - name: Deploy to VPS
         run: |
-          ssh -o StrictHostKeyChecking=no pierre_sudo_user@46.202.128.120 << 'ENDSSH'
+          ssh -p 2222 -o StrictHostKeyChecking=no pierre_sudo_user@46.202.128.120 << 'ENDSSH'
             set -e
 
             echo "📦 Deploying to VPS..."
@@ -124,7 +124,7 @@ jobs:
       - name: Verify deployment
         run: |
           echo "🔍 Verifying services are running..."
-          ssh -o StrictHostKeyChecking=no pierre_sudo_user@46.202.128.120 'cd /home/pierre_sudo_user/docker-apps && docker compose ps --format "table {{.Service}}\t{{.Status}}"'
+          ssh -p 2222 -o StrictHostKeyChecking=no pierre_sudo_user@46.202.128.120 'cd /home/pierre_sudo_user/docker-apps && docker compose ps --format "table {{.Service}}\t{{.Status}}"'
       
       - name: Deployment summary
         run: |
