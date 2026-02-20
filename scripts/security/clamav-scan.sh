@@ -17,7 +17,7 @@ PROM_FILE="${TEXTFILE_DIR}/clamav.prom"
 #   docker inspect evidence-chonkie-visualizer:20260220 | grep UpperDir
 # The evidence Docker image contains known malware remnants from Phase 1 forensics.
 # Excluding it prevents false positives in weekly scans.
-EVIDENCE_OVERLAY_ID="PLACEHOLDER_SET_DURING_VPS_SETUP"
+EVIDENCE_OVERLAY_ID="6389a7d67a241c1b67cb88806392e6fa73902b54d9137374eadf637a0e8f74b2"
 
 mkdir -p "${LOG_DIR}"
 # Note: Do NOT mkdir TEXTFILE_DIR here -- it's created during VPS setup with proper permissions
