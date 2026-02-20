@@ -73,7 +73,7 @@ services:
       - ALL
     tmpfs:
       - /tmp:size=64m
-      - /home/node/.cache:size=64m,uid=1000,gid=1000
+      - /home/node/.cache:size=256m,uid=1000,gid=1000
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:5678/healthz || exit 1"]
       interval: 30s
