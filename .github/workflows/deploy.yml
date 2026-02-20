@@ -67,6 +67,8 @@ jobs:
                 personal-website/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD personal-website" ;;
                 reading-fluency/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD reading-fluency" ;;
                 nginx/*) SERVICES_TO_RESTART="$SERVICES_TO_RESTART nginx" ;;
+                monitoring/prometheus/*) SERVICES_TO_RESTART="$SERVICES_TO_RESTART prometheus" ;;
+                monitoring/grafana/*) SERVICES_TO_RESTART="$SERVICES_TO_RESTART grafana" ;;
                 docker-compose.yml|.env*) SERVICES_TO_BUILD="ALL" ;;
               esac
             done
