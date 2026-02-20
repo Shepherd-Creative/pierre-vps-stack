@@ -20,31 +20,6 @@ services:
       - N8N_CHAT_WEBHOOK_UUID=${N8N_CHAT_WEBHOOK_UUID}
       - N8N_CHAT_AUTH_BASE64=${N8N_CHAT_AUTH_BASE64}
     entrypoint: ["/docker-entrypoint.sh"]
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_BIND_SERVICE
-    tmpfs:
-      - /var/cache/nginx:size=128m
-      - /run:size=1m
-      - /tmp:size=64m
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: '0.3'
-        reservations:
-          memory: 64M
-          cpus: '0.05'
     networks:
       - docker-apps-network
 
@@ -62,20 +37,6 @@ services:
       - n8n-data:/home/node/.n8n
     expose:
       - 5678
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:size=64m
-      - /home/node/.cache:size=64m,uid=1000,gid=1000
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:5678/healthz || exit 1"]
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
     deploy:
       resources:
         limits:
@@ -118,11 +79,6 @@ services:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'certbot renew'"
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     profiles:
       - certbot-renew  # Only runs with: docker compose --profile certbot-renew run certbot
 
@@ -150,13 +106,6 @@ services:
     expose:
       - 7474
       - 7687
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:size=64m
     deploy:
       resources:
         limits:
@@ -191,19 +140,6 @@ services:
       - ./lightrag/.env:/app/.env
     expose:
       - 9621
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:size=64m
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:9621/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
     deploy:
       resources:
         limits:
@@ -240,14 +176,6 @@ services:
       - graphiti-data:/app/data
     expose:
       - 8000
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:size=64m
-      - /root/.cache:size=128m
     deploy:
       resources:
         limits:
@@ -272,13 +200,6 @@ services:
       - ./deepeval/.env
     expose:
       - 8000
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:size=64m
     deploy:
       resources:
         limits:
@@ -487,29 +408,9 @@ services:
     expose:
       - 6333
       - 6334
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:size=64m
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:6333/healthz || exit 1"]
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '0.5'
-        reservations:
-          memory: 256M
-          cpus: '0.1'
     networks:
       - docker-apps-network
+
 
   # ===========================================
   # Chonkie Backend API
@@ -529,13 +430,8 @@ services:
       - chonkie-data:/home/chonkie/data
     expose:
       - 8000
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:size=64m
+    networks:
+      - docker-apps-network
     deploy:
       resources:
         limits:
@@ -544,8 +440,6 @@ services:
         reservations:
           memory: 512M
           cpus: '0.25'
-    networks:
-      - docker-apps-network
 
   # ===========================================
   # Chonkie Visualizer Frontend
@@ -600,19 +494,6 @@ services:
       - prometheus-data:/prometheus
     expose:
       - 9090
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:size=64m
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:9090/prometheus/-/healthy || exit 1"]
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
     deploy:
       resources:
         limits:
@@ -643,20 +524,6 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     expose:
       - 3000
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:size=64m
-      - /var/run:size=1m
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1"]
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
     deploy:
       resources:
         limits:
@@ -691,22 +558,6 @@ services:
       - /cgroup:/cgroup:ro
     expose:
       - 8080
-    security_opt:
-      - no-new-privileges:true
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/healthz || exit 1"]
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-          cpus: '0.15'
-        reservations:
-          memory: 64M
-          cpus: '0.05'
     networks:
       - docker-apps-network
 
@@ -728,27 +579,6 @@ services:
       - /:/rootfs:ro
     expose:
       - 9100
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:size=16m
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:9100/metrics || exit 1"]
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 64M
-          cpus: '0.1'
-        reservations:
-          memory: 32M
-          cpus: '0.05'
     networks:
       - docker-apps-network
 
@@ -765,15 +595,6 @@ services:
       - ./personal-website/.env
     expose:
       - 80
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /var/cache/nginx:size=32m
-      - /run:size=1m
-      - /tmp:size=32m
     deploy:
       resources:
         limits:
@@ -800,13 +621,6 @@ services:
       - 8000
     volumes:
       - reading-fluency-logs:/app/logs
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    tmpfs:
-      - /tmp:size=64m
     deploy:
       resources:
         limits:
