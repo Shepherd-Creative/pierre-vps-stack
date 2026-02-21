@@ -64,3 +64,58 @@ github_cleanup.md
 
 # GSD planning docs (local-only)
 .planning/
+
+# Auth files (htpasswd, credentials)
+nginx/.htpasswd
+nginx/conf.d/.htpasswd
+nginx/auth/lightrag
+nginx/auth/supabase
+nginx/auth/.htpasswd
+nginx/auth/qdrant
+*.htpasswd
+
+# BFG report artifacts
+..bfg-report/
+
+# Internal planning docs
+AGGP_APPLICATION_ACTION_PLAN.md
+CLEANUP_AND_SETUP.md
+PORTFOLIO_SITE_ROADMAP*.md
+DEEPEVAL_CICD_SETUP.md
+DEEPEVAL_SETUP_INSTRUCTIONS.md
+
+# AI context docs
+ai-context/
+
+# Portfolio content drafts
+portfolio-content/
+
+# GitHub internal docs
+.github/CICD_SETUP_CHECKLIST.md
+.github/IMPLEMENTATION_SUMMARY.md
+.github/QUICKSTART.md
+
+# Website templates
+website-templates/
+
+# Session logs and test reports
+chonkie/E2E_TEST_REPORT.md
+chonkie/SESSION_LOG_*.md
+
+# Certbot renewal configs (infrastructure-specific)
+nginx/certbot/
+
+# Obsolete scripts and files
+scripts/cleanup-git-history.sh
+docker-compose.yml.pre-hardening
+test-chat.html
+chonkie/enhanced-frontend.html
+chonkie/simple-frontend.html
+
+# IDE/tool configs (project-specific)
+reading-fluency/.claude/
+
+# Chonkie development artifacts
+chonkie/.claude/
+chonkie/CHONKIE_VPS_TEST_REPORT.md
+chonkie/chonkie-visualizer/tsconfig.tsbuildinfo
