@@ -36,9 +36,10 @@ jobs:
             # Store current commit before pull
             OLD_COMMIT=$(git rev-parse HEAD)
 
-            # Pull latest changes
-            echo "🔄 Pulling latest code from GitHub..."
-            git pull origin main
+            # Force-sync to GitHub state (handles dirty trees, divergent history)
+            echo "🔄 Syncing VPS to GitHub..."
+            git fetch origin main
+            git reset --hard origin/main
 
             NEW_COMMIT=$(git rev-parse HEAD)
 
