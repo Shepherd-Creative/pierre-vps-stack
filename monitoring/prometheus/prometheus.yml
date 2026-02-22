@@ -39,13 +39,6 @@ scrape_configs:
     metrics_path: /metrics
     scrape_timeout: 10s
 
-  - job_name: 'flowise'
-    static_configs:
-      - targets: ['flowise:3000']
-    scrape_interval: 30s
-    metrics_path: /metrics
-    scrape_timeout: 10s
-
   - job_name: 'qdrant'
     static_configs:
       - targets: ['qdrant:6333']
