@@ -15,7 +15,8 @@ WORKDIR /app
 # Copy requirements and install Python dependencies
 COPY requirements_clean.txt .
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir --timeout=120 -r requirements_clean.txt
+    pip install "setuptools<75" && \
+    pip install --no-build-isolation --no-cache-dir --timeout=120 -r requirements_clean.txt
 
 # Copy application files
 COPY reading_fluency_app_production.py app.py
