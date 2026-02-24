@@ -4,10 +4,13 @@
 # Usage: clamav-scan.sh [daily|weekly]
 #   daily  - Narrow scan of /home/pierre_sudo_user/docker-apps (default)
 #   weekly - Broad scan of /home + /var/lib/docker/volumes (excludes evidence overlay)
+#
+# Operational copy: /opt/security-scripts/clamav-scan.sh (root-owned)
+# Scheduled via: /etc/cron.d/security-scans (as root)
 set -euo pipefail
 
 SCAN_TYPE="${1:-daily}"
-LOG_DIR="${HOME}/security-logs"
+LOG_DIR="/var/log/security-scans"
 TEXTFILE_DIR="/var/lib/node_exporter/textfile_collector"
 DATE=$(date +%Y-%m-%d)
 LOG_FILE="${LOG_DIR}/clamav-${SCAN_TYPE}-${DATE}.log"
