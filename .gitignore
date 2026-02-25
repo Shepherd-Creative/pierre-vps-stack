@@ -65,6 +65,9 @@ github_cleanup.md
 # GSD planning docs (local-only)
 .planning/
 
+# Processed nginx configs (generated from .template on VPS, contain secrets)
+nginx/conf.d/pierre.brandiron.co.za.conf
+
 # Auth files (htpasswd, credentials)
 nginx/.htpasswd
 nginx/conf.d/.htpasswd
