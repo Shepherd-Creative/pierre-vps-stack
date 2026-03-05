@@ -65,8 +65,8 @@ jobs:
                 chonkie/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD chonkie" ;;
                 graphiti/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD graphiti" ;;
                 deepeval/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD deepeval" ;;
-                personal-website/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD personal-website" ;;
-                reading-fluency/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD reading-fluency" ;;
+                personal-website|personal-website/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD personal-website" ;;
+                reading-fluency|reading-fluency/*) SERVICES_TO_BUILD="$SERVICES_TO_BUILD reading-fluency" ;;
                 nginx/*) SERVICES_TO_RESTART="$SERVICES_TO_RESTART nginx" ;;
                 monitoring/prometheus/*) SERVICES_TO_RESTART="$SERVICES_TO_RESTART prometheus" ;;
                 monitoring/grafana/*) SERVICES_TO_RESTART="$SERVICES_TO_RESTART grafana" ;;
